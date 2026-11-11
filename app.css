@@ -13,3 +13,6 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 @media(orientation:landscape) and (max-height:500px){#brand{display:none}#score{gap:8px;padding:6px}#score b{font-size:12px}#top{top:2px}#menu{top:3px}#actions{bottom:3px}#status,#tip{display:none}.button{padding:5px 9px;min-height:36px}#tools{gap:4px}#production{padding:2px}#production::before{display:none}}
 @media(prefers-reduced-motion:reduce){#toast,#message{transition:none}}
 /* Rotation reminder has an explicit off state: old media-query rules must not force it visible. */
+
+/* Kept as invisible backward compatibility nodes for older cached Android scripts. */
+#rotateNote, #rotateNote.show, #rotateDismiss { display:none!important;visibility:hidden!important;pointer-events:none!important; }
