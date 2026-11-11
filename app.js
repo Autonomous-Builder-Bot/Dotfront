@@ -36,6 +36,7 @@ function tutorialRender(){
  panel.hidden=!tutorialActive||!$('overlay').classList.contains('hidden');
  if(panel.hidden)return;
  const step=tutorialSteps[tutorialIndex];
+ panel.classList.toggle('reading',step.event==='read');
  $('tutorialCount').textContent='STEP '+(tutorialIndex+1)+' OF '+tutorialSteps.length;
  $('tutorialTitle').textContent=step.title;
  $('tutorialBody').innerHTML=step.body;
