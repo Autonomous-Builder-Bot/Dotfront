@@ -37,3 +37,9 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #tutorialNext:disabled{opacity:.4}
 @media(max-width:700px){#tutorial{top:max(100px,calc(env(safe-area-inset-top) + 88px));max-height:38vh;width:min(92vw,390px);padding:10px 12px}#tutorialBody{font-size:12px}#tutorialTitle{font-size:15px}#tutorialFeedback{margin:6px 0}}
 @media(orientation:landscape) and (max-height:500px){#tutorial{top:max(42px,env(safe-area-inset-top));left:auto;right:9px;transform:none;width:min(42vw,330px);max-height:calc(100dvh - 50px);padding:9px 10px}#tutorialTitle{font-size:14px}#tutorialBody{font-size:11px}}
+
+/* Keep active play controls visible on short phone screens. Reading-only slides may expand while paused. */
+#tutorial{display:flex;flex-direction:column;overflow:hidden}
+#tutorialBody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
+#tutorialFeedback,.tutorialButtons,.tutorialHead,#tutorialTitle{flex-shrink:0}
+@media(max-width:700px){#tutorial{max-height:30vh}#tutorial.reading{max-height:min(55vh,410px)}}
