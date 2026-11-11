@@ -16,3 +16,5 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 
 /* Kept as invisible backward compatibility nodes for older cached Android scripts. */
 #rotateNote, #rotateNote.show, #rotateDismiss { display:none!important;visibility:hidden!important;pointer-events:none!important; }
+
+#shieldWall[hidden]{display:none!important}#shieldWall.active{border-color:#a7edff;background:#225375;box-shadow:0 0 12px #8acfff55}
