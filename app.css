@@ -43,3 +43,8 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #tutorialBody{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 #tutorialFeedback,.tutorialButtons,.tutorialHead,#tutorialTitle{flex-shrink:0}
 @media(max-width:700px){#tutorial{max-height:30vh}#tutorial.reading{max-height:min(55vh,410px)}}
+
+#production.tutorialFocus{outline:2px solid #8fe5ff;outline-offset:3px;border-radius:9px;box-shadow:0 0 18px #63d6ff66}
+#upgrade.tutorialFocus{outline:2px solid #8fe5ff;outline-offset:3px;box-shadow:0 0 16px #63d6ff77}
+
+@media(orientation:landscape) and (max-height:500px){#tutorial{max-height:calc(100dvh - 48px)}}
