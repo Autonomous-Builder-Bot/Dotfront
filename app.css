@@ -18,3 +18,22 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #rotateNote, #rotateNote.show, #rotateDismiss { display:none!important;visibility:hidden!important;pointer-events:none!important; }
 
 #shieldWall[hidden]{display:none!important}#shieldWall.active{border-color:#a7edff;background:#225375;box-shadow:0 0 12px #8acfff55}
+
+/* Interactive tutorial: compact, non-modal, and accessible on narrow mobile screens. */
+#tutorial[hidden]{display:none!important}
+#tutorial{position:absolute;z-index:15;top:max(104px,calc(env(safe-area-inset-top) + 89px));left:50%;transform:translateX(-50%);width:min(92vw,430px);max-height:min(49vh,390px);overflow-y:auto;overscroll-behavior:contain;pointer-events:auto;background:linear-gradient(155deg,#122b43f7,#091424fa);border:1px solid #74d7f0b3;border-radius:15px;color:#e8f5ff;padding:12px 14px 13px;box-shadow:0 12px 36px #000d;font-size:12px;line-height:1.45;touch-action:pan-y}
+.tutorialHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}
+#tutorialCount{font-size:10px;letter-spacing:1.2px;font-weight:800;color:#82dfff}
+#tutorialExit{border:0;border-radius:6px;background:#ffffff12;color:#dceeff;min-width:30px;min-height:30px;font-size:22px;line-height:1;cursor:pointer}
+#tutorialTitle{display:block;font-size:17px;color:white;margin-bottom:6px}
+#tutorialBody{font-size:12px;color:#d6e8f7;line-height:1.55}
+#tutorialBody small{color:#a8cce2}
+.tutUnits{display:grid;gap:4px;margin-top:7px}
+.tutUnits>div{padding:3px 5px;border-radius:5px;background:#ffffff09}
+#tutorialFeedback{font-size:11px;color:#aee4d6;margin:8px 0}
+.tutorialButtons{display:flex;gap:8px;justify-content:flex-end}
+#tutorial .tutorialButtons .button{min-height:36px;font-size:12px;margin:0;padding:7px 12px}
+#tutorialNext{background:#235d87}
+#tutorialNext:disabled{opacity:.4}
+@media(max-width:700px){#tutorial{top:max(100px,calc(env(safe-area-inset-top) + 88px));max-height:38vh;width:min(92vw,390px);padding:10px 12px}#tutorialBody{font-size:12px}#tutorialTitle{font-size:15px}#tutorialFeedback{margin:6px 0}}
+@media(orientation:landscape) and (max-height:500px){#tutorial{top:max(42px,env(safe-area-inset-top));left:auto;right:9px;transform:none;width:min(42vw,330px);max-height:calc(100dvh - 50px);padding:9px 10px}#tutorialTitle{font-size:14px}#tutorialBody{font-size:11px}}
