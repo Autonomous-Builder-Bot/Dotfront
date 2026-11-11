@@ -27,7 +27,9 @@ const tutorialSteps=[
  {title:'Upgrade a planet',event:'upgrade',body:'Upgrade a blue planet by bringing <b>20 friendly dots</b> close to it and tapping <b>⬆ Upgrade · 20</b>. You can also order a group of 20+ units onto a friendly planet to upgrade it on arrival.<br><small>Upgrades consume those dots. If you do not have enough yet, use <b>Skip Step</b>.</small>'},
  {title:'Advanced controls',event:'read',body:'<b>Pause</b> freezes combat, but you can still select dots and issue orders. <b>Menu</b> opens Campaign, Levels, and the permanent Upgrade Tree.<br><b>Shield Wall:</b> Once unlocked under Tactics, select at least 3 squares, tap <b>Shield Wall</b>, then <b>drag a line</b> where they should stand. Normal move orders break the wall.<br><small>You can replay this tutorial from the Menu anytime.</small>'}
 ];
-let tutorialActive=false,tutorialIndex=0,tutorialStepDone=false;
+let tutorialActive=false,tutorialIndex=0,tutorialStepDone=false,tutorialReadPause=false;
+function tutorialPauseReading(){if(!paused&&!finished){paused=true;$('pause').textContent='▶ Resume';tutorialReadPause=true}}
+function tutorialResumeReading(){if(tutorialReadPause&&!finished){paused=false;$('pause').textContent='Ⅱ Pause'}tutorialReadPause=false}
 function tutorialRender(){
  const panel=$('tutorial');
  if(!panel)return;
@@ -43,10 +45,10 @@ function tutorialRender(){
 }
 function tutorialStart(force=false){
  if(!force){try{if(localStorage.getItem(TUTORIAL_KEY)==='done')return}catch(e){}}
- tutorialActive=true;tutorialIndex=0;tutorialStepDone=false;tutorialRender();
+ tutorialActive=true;tutorialIndex=0;tutorialStepDone=false;tutorialReadPause=false;tutorialPauseReading();tutorialRender();
 }
 function tutorialFinish(){
- tutorialActive=false;$('tutorial').hidden=true;
+ tutorialResumeReading();tutorialActive=false;$('tutorial').hidden=true;
  try{localStorage.setItem(TUTORIAL_KEY,'done')}catch(e){}
 }
 function tutorialNext(skip=false){
@@ -54,7 +56,7 @@ function tutorialNext(skip=false){
  const step=tutorialSteps[tutorialIndex];
  if(!skip&&step.event!=='read'&&!tutorialStepDone)return;
  if(tutorialIndex===tutorialSteps.length-1){tutorialFinish();return}
- tutorialIndex++;tutorialStepDone=false;tutorialRender();
+ tutorialResumeReading();tutorialIndex++;tutorialStepDone=false;if(tutorialSteps[tutorialIndex].event==='read')tutorialPauseReading();tutorialRender();
 }
 function tutorialAction(action,details){
  if(!tutorialActive||tutorialStepDone||!$('overlay').classList.contains('hidden'))return;
