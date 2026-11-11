@@ -9,12 +9,7 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #menu{top:max(9px,env(safe-area-inset-top))}
 #overlay{padding-top:max(12px,env(safe-area-inset-top));padding-bottom:max(12px,env(safe-area-inset-bottom))}
 .button{min-height:40px}
-#rotateNote{position:absolute;left:50%;top:34%;transform:translate(-50%,-46%);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s ease,transform .3s ease,visibility .3s;background:#07162eea;color:#e8f8ff;border:1px solid #74cbee8c;border-radius:14px;text-align:center;padding:17px 44px 15px 18px;width:min(88vw,380px);z-index:5;font-size:15px;font-weight:700;line-height:1.5}#rotateNote.show{opacity:1;visibility:visible;pointer-events:auto;transform:translate(-50%,-50%)}#rotateDismiss{position:absolute;right:8px;top:8px}
-#rotateNote small{display:block;margin-top:6px;font-weight:400;font-size:12px}
 @media (orientation:portrait) and (max-width:700px){#menu{top:max(60px,env(safe-area-inset-top))}#status{display:none}#actions{bottom:max(8px,env(safe-area-inset-bottom))}#tools{justify-content:center}#top{justify-content:center}#brand{display:none}#score{flex-wrap:wrap;justify-content:center}.button{min-height:44px}}
 @media(orientation:landscape) and (max-height:500px){#brand{display:none}#score{gap:8px;padding:6px}#score b{font-size:12px}#top{top:2px}#menu{top:3px}#actions{bottom:3px}#status,#tip{display:none}.button{padding:5px 9px;min-height:36px}#tools{gap:4px}#production{padding:2px}#production::before{display:none}}
-@media(prefers-reduced-motion:reduce){#toast,#message,#rotateNote{transition:none}}
+@media(prefers-reduced-motion:reduce){#toast,#message{transition:none}}
 /* Rotation reminder has an explicit off state: old media-query rules must not force it visible. */
-#rotateNote:not(.show){display:none!important;pointer-events:none!important}
-#rotateNote.show{display:block;animation:dotfront-rotate-timeout 5s forwards}
-@keyframes dotfront-rotate-timeout{0%,82%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden;pointer-events:none}}
