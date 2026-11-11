@@ -197,9 +197,9 @@ function updateHud(){cleanSelected();$('mycount').textContent=units.filter(u=>u.
 function dismissToast(){toastTimer=0;$('toast').classList.remove('show')}
 function toast(s){$('toastText').textContent=s;$('toast').classList.add('show');toastTimer=3.5}
 $('toastDismiss').addEventListener('click',e=>{e.stopPropagation();dismissToast()});$('toast').addEventListener('click',dismissToast);
-let rotateTimer=0,rotateSeen=false,rotateWasPortrait=false;
-function hideRotate(){rotateTimer=0;$('rotateNote').classList.remove('show')}
-function updateRotate(){const isPortrait=matchMedia('(orientation: portrait) and (max-width: 700px)').matches;if(isPortrait&&!rotateWasPortrait&&!rotateSeen){$('rotateNote').classList.add('show');rotateTimer=5;rotateSeen=true}if(!isPortrait)hideRotate();rotateWasPortrait=isPortrait}
+let rotateTimer=0,rotateSeen=false,rotateWasPortrait=false,rotateTimeout=null;
+function hideRotate(){rotateTimer=0;if(rotateTimeout!==null){clearTimeout(rotateTimeout);rotateTimeout=null}const n=$('rotateNote');n.classList.remove('show');n.style.display='none'}
+function updateRotate(){const isPortrait=matchMedia('(orientation: portrait) and (max-width: 700px)').matches;if(isPortrait&&!rotateWasPortrait&&!rotateSeen){const n=$('rotateNote');n.style.display='block';n.classList.add('show');rotateTimer=5;rotateSeen=true;rotateTimeout=setTimeout(hideRotate,5000)}if(!isPortrait)hideRotate();rotateWasPortrait=isPortrait}
 $('rotateDismiss').addEventListener('click',hideRotate);
 $('rotateNote').addEventListener('click',hideRotate);
 function drawGlow(x,y,r,color,alpha=.2){let grd=g.createRadialGradient(x,y,0,x,y,r);grd.addColorStop(0,color);grd.addColorStop(1,'transparent');g.save();g.globalAlpha=alpha;g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.restore()}
