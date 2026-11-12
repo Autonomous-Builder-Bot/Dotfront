@@ -79,3 +79,18 @@ test('all source scripts parse',()=>{
   assert.equal(result.status,0,f+': '+result.stderr);
  }
 });
+
+test('tutorial is a compact action dock with expandable help, not a centered overlay',()=>{
+ const app=read('app.js'),html=read('index.html'),css=read('app.css');
+ assert.ok(!html.includes('id="tip"'),'Remove redundant controls card from game');
+ for(const id of ['tutorialBrief','tutorialDetails','tutorialBody']) assert.ok(html.includes('id="'+id+'"'),id+' must exist');
+ assert.match(app,/const tutorialBriefs=\[/);
+ assert.match(app,/tutorialDetailsOpen=false/);
+ assert.match(app,/tutorialDetails'\)\.onclick=/);
+ assert.match(app,/panel\.classList\.toggle\('controlsStep'/);
+ assert.match(css,/#tutorial\.controlsStep\{top:/);
+ assert.match(css,/#tutorial\.expanded/);
+ assert.match(css,/bottom:max\(83px/);
+ assert.match(css,/max-height:min\(28dvh,190px\)/);
+ assert.match(css,/#tutorialBody\[hidden\]/);
+});
