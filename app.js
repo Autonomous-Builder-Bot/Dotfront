@@ -44,7 +44,7 @@ const WAR_DOCTRINES=[
  {id:'iron',name:'Iron Legion',glyph:'■',root:'doc_iron_root',unit:'Square / Rectangle',tagline:'Heavy infantry, shields and breakthroughs',strategy:'Hold strong defensive lines, then break the enemy center.'},
  {id:'ranged',name:'Star Archers',glyph:'▲',root:'doc_ranged_root',unit:'Triangle',tagline:'Long-range attacks and precision lasers',strategy:'Protect a deadly firing line and win engagements at range.'},
  {id:'cavalry',name:'Shock Cavalry',glyph:'❯',root:'doc_cavalry_root',unit:'Cavalry',tagline:'Fast charges, flanks and pursuit',strategy:'Outmaneuver defenders and strike exposed sides.'},
- {id:'balanced',name:'Combined Command',glyph:'✦',root:'doc_balanced_root',unit:'Mixed Army',tagline:'Flexible production and combined arms',strategy:'Combine all five unit types into coordinated formations.'}
+ {id:'superheavy',name:'Super-Heavy Legion',glyph:'▰',root:'doc_super_root',unit:'Rectangle',tagline:'Armored giants and devastating close-range attacks',strategy:'Build an army around rectangles: tough mobile fortresses that support capturing infantry, but cannot capture planets themselves.'}
 ];
 const DOCTRINE_MODS=[
  {id:'doc_swarm_root',school:'swarm',tier:1,title:'Mass Recruitment',desc:'Circles train 18% faster.',cost:3,minLevel:12},
@@ -53,12 +53,12 @@ const DOCTRINE_MODS=[
  {id:'doc_swarm_pack',school:'swarm',tier:3,title:'Pack Hunters',desc:'Circles deal 22% more damage when fighting with nearby circles.',cost:12,minLevel:45},
  {id:'doc_swarm_health',school:'swarm',tier:3,title:'Stubborn Recruits',desc:'Light infantry spawns with 20% more health.',cost:12,minLevel:45},
  {id:'doc_swarm_master',school:'swarm',tier:4,title:'Endless Tide',desc:'Circles train 12% faster again; every sixth produced circle adds a free recruit.',cost:20,minLevel:75},
- {id:'doc_iron_root',school:'iron',tier:1,title:'Heavy Foundries',desc:'Squares and rectangles train 15% faster.',cost:3,minLevel:12},
- {id:'doc_iron_plates',school:'iron',tier:2,title:'Thick Plating',desc:'Heavy and super-heavy infantry gain 20% health.',cost:8,minLevel:25,req:'doc_iron_root'},
+ {id:'doc_iron_root',school:'iron',tier:1,title:'Heavy Foundries',desc:'Squares train 15% faster.',cost:3,minLevel:12},
+ {id:'doc_iron_plates',school:'iron',tier:2,title:'Thick Plating',desc:'Heavy infantry (squares) gain 20% health.',cost:8,minLevel:25,req:'doc_iron_root'},
  {id:'doc_iron_shields',school:'iron',tier:2,title:'Tower Shields',desc:'Squares gain 2 additional armor.',cost:8,minLevel:25,req:'doc_iron_root'},
  {id:'doc_iron_phalanx',school:'iron',tier:3,title:'Phalanx Discipline',desc:'Squares fighting alongside another square deal 18% more damage.',cost:12,minLevel:45},
- {id:'doc_iron_hammer',school:'iron',tier:3,title:'Siege Breakers',desc:'Rectangles inflict 30% more damage against enemy units.',cost:12,minLevel:45},
- {id:'doc_iron_master',school:'iron',tier:4,title:'The Iron Legion',desc:'Squares and rectangles train another 15% faster; squares gain 1 armor.',cost:20,minLevel:75},
+ {id:'doc_iron_hammer',school:'iron',tier:3,title:'Power Strikes',desc:'Squares inflict 25% more damage against enemy units.',cost:12,minLevel:45},
+ {id:'doc_iron_master',school:'iron',tier:4,title:'The Iron Legion',desc:'Squares train another 15% faster and gain 1 armor.',cost:20,minLevel:75},
  {id:'doc_ranged_root',school:'ranged',tier:1,title:'Longbow Forges',desc:'Archers train 18% faster.',cost:3,minLevel:12},
  {id:'doc_ranged_scope',school:'ranged',tier:2,title:'Precision Optics',desc:'Archers gain 25% attack range.',cost:8,minLevel:25,req:'doc_ranged_root'},
  {id:'doc_ranged_volley',school:'ranged',tier:2,title:'Rapid Volley',desc:'Archers fire 20% more frequently.',cost:8,minLevel:25,req:'doc_ranged_root'},
@@ -71,12 +71,12 @@ const DOCTRINE_MODS=[
  {id:'doc_cavalry_flank',school:'cavalry',tier:3,title:'Double Envelopment',desc:'Cavalry causes more damage when attacking from behind.',cost:12,minLevel:45},
  {id:'doc_cavalry_lancers',school:'cavalry',tier:3,title:'Armored Lancers',desc:'Cavalry ignores 3 points of enemy armor.',cost:12,minLevel:45},
  {id:'doc_cavalry_master',school:'cavalry',tier:4,title:'Relentless Pursuit',desc:'After defeating an enemy, cavalry gains a 25% speed boost for 5 seconds.',cost:20,minLevel:75},
- {id:'doc_balanced_root',school:'balanced',tier:1,title:'Combined Workshops',desc:'All friendly production increases 8%.',cost:3,minLevel:12},
- {id:'doc_balanced_speed',school:'balanced',tier:2,title:'Maneuver Doctrine',desc:'All friendly units move 10% faster.',cost:8,minLevel:25,req:'doc_balanced_root'},
- {id:'doc_balanced_health',school:'balanced',tier:2,title:'Common Standards',desc:'All friendly units gain 10% health.',cost:8,minLevel:25,req:'doc_balanced_root'},
- {id:'doc_balanced_pair',school:'balanced',tier:3,title:'Combined Arms',desc:'Troops deal 15% more damage near a different allied unit type.',cost:12,minLevel:45},
- {id:'doc_balanced_guard',school:'balanced',tier:3,title:'Support Formations',desc:'Troops gain 1 armor near a different allied unit type.',cost:12,minLevel:45},
- {id:'doc_balanced_master',school:'balanced',tier:4,title:'Grand Strategy',desc:'Production increases a further 8%; newly captured worlds deploy 4 circles.',cost:20,minLevel:75}
+ {id:'doc_super_root',school:'superheavy',tier:1,title:'Titan Foundries',desc:'Rectangles train 20% faster.',cost:3,minLevel:12},
+ {id:'doc_super_drive',school:'superheavy',tier:2,title:'Kinetic Drives',desc:'Rectangles move 25% faster.',cost:8,minLevel:25,req:'doc_super_root'},
+ {id:'doc_super_plates',school:'superheavy',tier:2,title:'Titan Plating',desc:'Rectangles gain 35% health.',cost:8,minLevel:25,req:'doc_super_root'},
+ {id:'doc_super_crush',school:'superheavy',tier:3,title:'Crushing Strikes',desc:'Rectangles deal 30% more damage against enemy units.',cost:12,minLevel:45},
+ {id:'doc_super_shock',school:'superheavy',tier:3,title:'Kinetic Shockwaves',desc:'Rectangle strikes splash 7 damage onto nearby enemy units.',cost:12,minLevel:45},
+ {id:'doc_super_master',school:'superheavy',tier:4,title:'Mobile Citadels',desc:'Rectangles gain another 20% health and grant nearby allied units 2 armor.',cost:20,minLevel:75}
 ].map(m=>({...m,branch:'Doctrine',kind:'SPECIALIZATION'}));
 MODS.push(...DOCTRINE_MODS);
 let techSection='doctrine',doctrineFocus='swarm',doctrineFocusInitialized=false;
@@ -131,9 +131,16 @@ function renderDoctrineTree(level,points){
   <div class="doctrinePath">${rows}</div>
   <p class="doctrineDisclaimer">${active?'Your active doctrine is '+WAR_DOCTRINES.find(d=>d.id===active).name+'.':'Buying the first technology commits your army to that doctrine.'} Other doctrines and alternative fork choices remain locked until you refund research. All existing upgrades and campaign progress are preserved.</p></section>`;
 }
+// Old Combined Command saves are migrated at identical point costs and tiers.
+const LEGACY_DOCTRINE_IDS={
+ doc_balanced_root:'doc_super_root',doc_balanced_speed:'doc_super_drive',
+ doc_balanced_health:'doc_super_plates',doc_balanced_pair:'doc_super_crush',
+ doc_balanced_guard:'doc_super_shock',doc_balanced_master:'doc_super_master'
+};
+function migrateOwnedResearch(ids){return Array.isArray(ids)?[...new Set(ids.filter(v=>typeof v==='string').map(v=>LEGACY_DOCTRINE_IDS[v]||v).filter(v=>MODS.some(m=>m.id===v)))]:[]}
 const rankOf=id=>Math.max(0,Math.min(5,Math.floor(progress.ranks?.[id]||0)));
 const cavalryUnlocked=()=>progress.unlocked>=20;
-const SAVE_KEY='dotfront_campaign_v1';const BACKUP_KEY='dotfront_campaign_backup_v1';const LEGACY_SAVE_KEY='starforge_campaign_v1';const LEGACY_BACKUP_KEY='starforge_campaign_backup_v1';function loadProgress(){try{let raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(BACKUP_KEY)||localStorage.getItem(LEGACY_SAVE_KEY)||localStorage.getItem(LEGACY_BACKUP_KEY)||'{}';if(raw.length>100000)throw Error('Save too large');let o=JSON.parse(raw);return{unlocked:clamp(Math.floor(o.unlocked||1),1,CAMPAIGN_SIZE),completed:Array.isArray(o.completed)?o.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE):[],owned:Array.isArray(o.owned)?[...new Set(o.owned.filter(v=>MODS.some(m=>m.id===v)))]:[],ranks:Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(o.ranks?.[m.id])||0)))]))}}catch(e){return{unlocked:1,completed:[],owned:[],ranks:{}}}}let progress=loadProgress(),currentLevel=progress.unlocked,menuTab='play',menuFromPause=false;
+const SAVE_KEY='dotfront_campaign_v1';const BACKUP_KEY='dotfront_campaign_backup_v1';const LEGACY_SAVE_KEY='starforge_campaign_v1';const LEGACY_BACKUP_KEY='starforge_campaign_backup_v1';function loadProgress(){try{let raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(BACKUP_KEY)||localStorage.getItem(LEGACY_SAVE_KEY)||localStorage.getItem(LEGACY_BACKUP_KEY)||'{}';if(raw.length>100000)throw Error('Save too large');let o=JSON.parse(raw);return{unlocked:clamp(Math.floor(o.unlocked||1),1,CAMPAIGN_SIZE),completed:Array.isArray(o.completed)?o.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE):[],owned:migrateOwnedResearch(o.owned),ranks:Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(o.ranks?.[m.id])||0)))]))}}catch(e){return{unlocked:1,completed:[],owned:[],ranks:{}}}}let progress=loadProgress(),currentLevel=progress.unlocked,menuTab='play',menuFromPause=false;
 
 // Time control changes the pacing of both armies equally; it does not alter AI difficulty.
 const GAME_SPEEDS=[1,2,4];let speedIndex=0;
@@ -275,7 +282,7 @@ $('tutorialExit').onclick=()=>tutorialFinish();
 
 function saveProgress(){try{const encoded=JSON.stringify(progress);const old=localStorage.getItem(SAVE_KEY);if(old)localStorage.setItem(BACKUP_KEY,old);localStorage.setItem(SAVE_KEY,encoded)}catch(e){console.warn('Dotfront: unable to persist progress');}}
 function exportProgress(){const payload={format:'dotfront-save',version:1,exported:new Date().toISOString(),progress};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dotfront-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function importProgress(file){if(!file||file.size>100000){toast('Save must be a small Dotfront JSON file.');return}file.text().then(s=>{let data=JSON.parse(s);if(!['dotfront-save','starforge-save'].includes(data.format)||data.version!==1||typeof data.progress!=='object')throw Error('Invalid save');let p=data.progress;const completed=Array.isArray(p.completed)?[...new Set(p.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE))]:[];const allowed=new Set(MODS.map(m=>m.id));const owned=Array.isArray(p.owned)?[...new Set(p.owned.filter(v=>typeof v==='string'&&allowed.has(v)))]:[];const ranks=Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(p.ranks?.[m.id])||0)))]));
+function importProgress(file){if(!file||file.size>100000){toast('Save must be a small Dotfront JSON file.');return}file.text().then(s=>{let data=JSON.parse(s);if(!['dotfront-save','starforge-save'].includes(data.format)||data.version!==1||typeof data.progress!=='object')throw Error('Invalid save');let p=data.progress;const completed=Array.isArray(p.completed)?[...new Set(p.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE))]:[];const owned=migrateOwnedResearch(p.owned);const ranks=Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(p.ranks?.[m.id])||0)))]));
  const rankCost=MASTERY.reduce((n,m)=>n+m.costs.slice(0,ranks[m.id]).reduce((a,b)=>a+b,0),0);
  const cost=owned.reduce((a,id)=>a+(MODS.find(m=>m.id===id)?.cost||0),0)+rankCost;
  if(cost>completed.length)throw Error('Invalid upgrade balance');
@@ -349,7 +356,7 @@ function levelBonuses(){
  if(key===bonusKey&&cachedBonuses)return cachedBonuses;
  const d=levelDesign(currentLevel);
  bonusKey=key;cachedBonuses={
-  prod:1+(hasMod('production1')?.08:0)+(hasMod('production2')?.12:0)+(hasMod('production3')?.15:0)+rankOf('productionmastery')*.03+(hasMod('doc_balanced_root')?.08:0)+(hasMod('doc_balanced_master')?.08:0),
+  prod:1+(hasMod('production1')?.08:0)+(hasMod('production2')?.12:0)+(hasMod('production3')?.15:0)+rankOf('productionmastery')*.03,
   speed:1+(hasMod('command1')?.08:0)+rankOf('commandmastery')*.04,
   hp:1+(hasMod('combat1')?.10:0),armor:hasMod('combat2')?1:0,
   damage:(hasMod('combat3')?1.12:1)*(1+rankOf('combatmastery')*.03),
@@ -362,22 +369,24 @@ function productionPeriod(p){
  let period=specs[p.type].period;
  if(p.team!==0)return period;
  if(p.type==='circle'){if(hasMod('doc_swarm_root'))period*=.82;if(hasMod('doc_swarm_master'))period*=.88}
- if(p.type==='square'||p.type==='rectangle'){if(hasMod('doc_iron_root'))period*=.85;if(hasMod('doc_iron_master'))period*=.85}
+ if(p.type==='square'){if(hasMod('doc_iron_root'))period*=.85;if(hasMod('doc_iron_master'))period*=.85}
+ if(p.type==='rectangle'&&hasMod('doc_super_root'))period*=.8
  if(p.type==='triangle'&&hasMod('doc_ranged_root'))period*=.82;
  if(p.type==='cavalry'&&hasMod('doc_cavalry_root'))period*=.8;
  return period;
 }
 function doctrineHpMultiplier(type,team){
  if(team!==0)return 1;
- let value=hasMod('doc_balanced_health')?1.1:1;
+ let value=1;
  if(type==='circle'&&hasMod('doc_swarm_health'))value*=1.2;
- if((type==='square'||type==='rectangle')&&hasMod('doc_iron_plates'))value*=1.2;
+ if(type==='square'&&hasMod('doc_iron_plates'))value*=1.2;
+ if(type==='rectangle'){if(hasMod('doc_super_plates'))value*=1.35;if(hasMod('doc_super_master'))value*=1.2}
  return value;
 }
 function unitAttackRange(u){return specs[u.type].range*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_scope')?1.25:1)}
 function unitSpeedDoctrine(u){
  if(u.team!==0)return 1;
- let v=hasMod('doc_balanced_speed')?1.1:1;
+ let v=1;if(u.type==='rectangle'&&hasMod('doc_super_drive'))v*=1.25;
  if(u.type==='circle'&&hasMod('doc_swarm_march'))v*=1.17;
  if(u.type==='triangle'&&hasMod('doc_ranged_skirmish'))v*=1.2;
  if(u.type==='cavalry'){
@@ -386,7 +395,6 @@ function unitSpeedDoctrine(u){
  }
  return v;
 }
-function nearbyDifferentAlly(u,near){return near(u).some(v=>v!==u&&v.team===u.team&&!v.dead&&v.type!==u.type&&dist(v,u)<80)}
 function buyMod(id){
  const mastery=MASTERY.find(m=>m.id===id);
  if(mastery){
@@ -495,7 +503,7 @@ function burst(x,y,t,n=8,strength=1){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2
 function nearestEnemyPlanet(origin,team){let best=null,d=Infinity;for(const p of planets)if(p.team!==team){let q=dist(p,origin)*(p.team===2?.86:1);if(q<d){d=q;best=p}}return best}
 function order(list,pos,upgradePlanet=null){let n=0;for(const u of list){if(u.dead||u.team!==0)continue;u.shieldWall=null;let a=n*2.39996,r=Math.sqrt(n)*6;u.moveTo={x:clamp(pos.x+Math.cos(a)*r,10,W-10),y:clamp(pos.y+Math.sin(a)*r,10,H-10)};u.target=null;u.upgradeTarget=upgradePlanet&&upgradePlanet.level<3?upgradePlanet.id:null;n++}if(n)burst(pos.x,pos.y,0,7,.32);return n}
 function buildAt(pos,team=0,force=false){if(pos.x<55||pos.x>W-55||pos.y<65||pos.y>H-65){if(team===0)toast('Build inside the starfield.');return false}if(planets.some(p=>dist(p,pos)<p.r+75)){if(team===0)toast('Too close to another planet.');return false}let pool=units.filter(u=>!u.dead&&u.team===team&&(force?dist(u,pos)<310:selected.has(u)));let cost=team===0?colonyCost():25;if(pool.length<cost){if(team===0)toast(`Need ${cost} selected units (${pool.length} available).`);return false}pool.sort((a,b)=>dist(a,pos)-dist(b,pos));for(const u of pool.slice(0,cost)){u.dead=true;selected.delete(u);burst(u.x,u.y,team,5,.53)}let newP=addPlanet(pos.x,pos.y,team,27,team===0?'NEW STAR':'RIFT');if(team===0&&hasMod('expansion3')){newP.maxHp+=100;newP.hp+=100}if(team===0){toast('New planet forged — '+cost+' units converted to matter.')}return true}
-function capturePlanet(p,team){p.team=team;p.hp=p.maxHp*.55;p.type='circle';p.level=1;p.spawn=0;p.rally=null;p.flash=1;p.shield=1.6;p.overclock=0;p.overclockCooldown=0;p.fortify=0;p.fortifyCooldown=0;burst(p.x,p.y,team,55,1.8);if(selectedPlanet===p&&team!==0)selectedPlanet=null;if(team===0&&hasMod('doc_balanced_master'))for(let i=0;i<4;i++)spawnUnit(p,'circle',true);if(team===0)toast(p.name+' captured!');else toast('An enemy captured '+p.name+'.');}
+function capturePlanet(p,team){p.team=team;p.hp=p.maxHp*.55;p.type='circle';p.level=1;p.spawn=0;p.rally=null;p.flash=1;p.shield=1.6;p.overclock=0;p.overclockCooldown=0;p.fortify=0;p.fortifyCooldown=0;burst(p.x,p.y,team,55,1.8);if(selectedPlanet===p&&team!==0)selectedPlanet=null;if(team===0)toast(p.name+' captured!');else toast('An enemy captured '+p.name+'.');}
 function update(dt){elapsed+=dt;aiTimer+=dt;lasers=lasers.filter(l=>(l.life-=dt)>0);for(const p of planets){p.pulse+=dt;p.flash=Math.max(0,p.flash-dt*1.7);p.shield=Math.max(0,p.shield-dt);p.overclock=Math.max(0,p.overclock-dt);p.overclockCooldown=Math.max(0,p.overclockCooldown-dt);p.fortify=Math.max(0,p.fortify-dt);p.fortifyCooldown=Math.max(0,p.fortifyCooldown-dt);if(p.team===2)continue;
  const network=p.team===0&&hasMod('factorynetwork')?1+Math.min(.18,planets.filter(other=>other!==p&&other.team===0&&dist(p,other)<320).length*.06):1;
  p.spawn+=dt*(p.level===1?1:1.35)*(p.team===1?aiConfig[difficulty].production*levelBonuses().aiScale:levelBonuses().prod*network*(p.overclock>0?2:1));
@@ -515,9 +523,10 @@ if(enemy&&ed<attackRange+4){
   if(u.team===0){
    if(u.type==='circle'&&hasMod('doc_swarm_pack')&&near(u).filter(v=>v!==u&&!v.dead&&v.team===0&&v.type==='circle'&&dist(v,u)<72).length>=3)baseDamage*=1.22;
    if(u.type==='square'&&hasMod('doc_iron_phalanx')&&near(u).some(v=>v!==u&&!v.dead&&v.team===0&&v.type==='square'&&dist(v,u)<70))baseDamage*=1.18;
-   if(u.type==='rectangle'&&hasMod('doc_iron_hammer'))baseDamage*=1.3;
+   if(u.type==='square'&&hasMod('doc_iron_hammer'))baseDamage*=1.25;
+   if(u.type==='rectangle'&&hasMod('doc_super_crush'))baseDamage*=1.3;
    if(u.type==='triangle'&&hasMod('doc_ranged_master')&&near(u).some(v=>v!==u&&!v.dead&&v.team===0&&v.type==='triangle'&&dist(v,u)<95))baseDamage*=1.25;
-   if(hasMod('doc_balanced_pair')&&nearbyDifferentAlly(u,near))baseDamage*=1.15;
+   
   }
   const approach=Math.hypot(u.vx,u.vy);
   if(u.type==='cavalry'&&u.chargeDistance>=100&&approach>40){
@@ -532,11 +541,11 @@ if(enemy&&ed<attackRange+4){
   const pierce=u.team===0?u.type==='triangle'&&hasMod('doc_ranged_pierce')?3:u.type==='cavalry'&&hasMod('doc_cavalry_lancers')?3:0:0;
   const targetArmor=Math.max(0,(specs[enemy.type].armor||0)-pierce);
   const ironGuard=enemy.team===0&&enemy.type==='square'?(hasMod('doc_iron_shields')?2:0)+(hasMod('doc_iron_master')?1:0):0;
-  const supportGuard=enemy.team===0&&hasMod('doc_balanced_guard')&&nearbyDifferentAlly(enemy,near)?1:0;
+  const supportGuard=enemy.team===0&&hasMod('doc_super_master')&&near(enemy).some(v=>v!==enemy&&!v.dead&&v.team===0&&v.type==='rectangle'&&dist(v,enemy)<90)?2:0;
   const hit=Math.max(1,baseDamage-targetArmor-(enemy.team===0?levelBonuses().armor:0)-wallArmor-guard-ironGuard-supportGuard);
   if(u.type==='cavalry')u.chargeDistance=0;
   enemy.hp-=hit;
-  if(u.team===0&&u.type==='rectangle'&&hasMod('shockarmor'))for(const nearby of near(enemy))if(nearby!==enemy&&nearby.team!==u.team&&!nearby.dead&&dist(nearby,enemy)<34){nearby.hp-=4;if(nearby.hp<=0){nearby.dead=true;selected.delete(nearby);burst(nearby.x,nearby.y,nearby.team,6,.5)}}
+  if(u.team===0&&u.type==='rectangle'&&(hasMod('shockarmor')||hasMod('doc_super_shock'))){const shockDamage=(hasMod('shockarmor')?4:0)+(hasMod('doc_super_shock')?7:0);for(const nearby of near(enemy))if(nearby!==enemy&&nearby.team!==u.team&&!nearby.dead&&dist(nearby,enemy)<40){nearby.hp-=shockDamage;if(nearby.hp<=0){nearby.dead=true;selected.delete(nearby);burst(nearby.x,nearby.y,nearby.team,6,.5)}}}
   if(u.team===0&&u.type==='triangle'&&hasMod('expansion1'))enemy.hp-=hit;
   u.cooldown=spec.attackPeriod*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_volley')?.8:1);
   if(spec.ranged){lasers.push({x1:u.x,y1:u.y,x2:enemy.x,y2:enemy.y,team:u.team,life:.16,max:.16});if(u.team===0&&u.type==='triangle'&&hasMod('expansion1'))lasers.push({x1:u.x+4,y1:u.y+3,x2:enemy.x-4,y2:enemy.y-3,team:u.team,life:.18,max:.18})}
