@@ -403,6 +403,28 @@ function mathMissionDesign(n,base){
    if(nearest>=minSpacing&&nearest<=maxBridge)setups.push([x,y,2,26,'SECTOR '+String(setups.length-1).padStart(2,'0')]);
   }
  }
+ // Keep early neutral production opportunities within a bounded range
+ // for each side; intentionally asymmetric maps are still supported.
+ const nearestOwner=(p)=>{
+  const side=(team)=>Math.min(...setups.filter(q=>q[2]===team).map(q=>Math.hypot(q[0]-p[0],q[1]-p[1])));
+  return side(0)<=side(1)?0:1;
+ };
+ for(let adjustment=0;adjustment<500;adjustment++){
+  const neutrals=setups.filter(p=>p[2]===2);
+  const left=neutrals.filter(p=>nearestOwner(p)===0),right=neutrals.filter(p=>nearestOwner(p)===1);
+  if(Math.abs(left.length-right.length)<=3||!left.length||!right.length)break;
+  const needsTeam=left.length<right.length?0:1,over=needsTeam===0?right:left;
+  const target=over[Math.floor(rng()*over.length)];
+  const anchors=setups.filter(p=>p[2]===needsTeam||(p[2]===2&&p!==target&&nearestOwner(p)===needsTeam));
+  if(!anchors.length)break;
+  const anchor=anchors[Math.floor(rng()*anchors.length)],theta=rng()*Math.PI*2,radius=165+rng()*180;
+  const x=Math.round(clamp(anchor[0]+Math.cos(theta)*radius,90,worldWidth-90));
+  const y=Math.round(clamp(anchor[1]+Math.sin(theta)*radius,90,worldHeight-90));
+  const nearest=Math.min(...setups.filter(p=>p!==target).map(p=>Math.hypot(x-p[0],y-p[1])));
+  if(nearest<130||nearest>390)continue;
+  const oldX=target[0],oldY=target[1];target[0]=x;target[1]=y;
+  if(nearestOwner(target)!==needsTeam){target[0]=oldX;target[1]=oldY}
+ }
  const starter=Math.round(44+24*t);
  const enemyStarter=Math.round(starter*(.92+.30*t))+(base.template==='boss'?Math.round(3+6*t):0);
  return {...base,worldWidth,worldHeight,setups,starter,enemyStarter,
