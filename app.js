@@ -129,7 +129,7 @@ function renderDoctrineTree(level,points){
   <div class="doctrineBanner"><div><strong>${school.glyph} ${school.name}</strong><small>${school.tagline}</small></div><span>${spent}/4</span></div>
   <p class="doctrineStrategy">${school.strategy}</p>
   <div class="doctrinePath">${rows}</div>
-  <p class="doctrineDisclaimer">${active?'Your active doctrine is '+WAR_DOCTRINES.find(d=>d.id===active).name+'.':'Buying the first technology commits your army to that doctrine.'} Other doctrines and alternative fork choices remain locked until you refund research. All existing upgrades and campaign progress are preserved.</p></section>`;
+  <p class="doctrineDisclaimer">${active?'Your active doctrine is '+WAR_DOCTRINES.find(d=>d.id===active).name+'.':'Buying the first technology commits your army to that doctrine.'} Other doctrines and alternative fork choices remain locked for this campaign. Existing upgrades and campaign progress are preserved.</p></section>`;
 }
 // Old Combined Command saves are migrated at identical point costs and tiers.
 const LEGACY_DOCTRINE_IDS={
@@ -409,7 +409,6 @@ function buyMod(id){
  const scroll=$('modal').scrollTop;
  saveProgress();showMenu('upgrades');$('modal').scrollTop=scroll;
 }
-function resetTechTree(){progress.owned=[];progress.ranks={};saveProgress();showMenu('upgrades')}
 const TECH_BRANCHES=[
  {name:'Production',icon:'⚙',hint:'Build a larger army faster.'},
  {name:'Combat',icon:'⬡',hint:'Hold ground and punish attacks.'},
@@ -435,7 +434,7 @@ function renderTechTree(){
   return `<section class="techBranch" data-branch="${b.name}"><div class="techBranchHead"><span class="techCrest">${b.icon}</span><div><strong>${b.name.toUpperCase()}</strong><small>${b.hint}</small></div><span class="techProgress">${owned}/${capacity}</span></div><div class="techTrack"><div style="width:${(100*owned/capacity).toFixed(1)}%"></div></div><div class="techNodes">${upgrades.map(techCard).join('')}</div></section>`;
  }).join('');
  const cavalry=level>=20?'UNLOCKED — ❯ CAVALRY':'UNLOCKS AT LEVEL 20 — ❯ CAVALRY';
- return `<div class="techHero"><div class="techHeroStats"><div><span class="techPoints">${points}</span><small>UNSPENT POINTS</small></div><div><span class="techLevel">${level}</span><small>CAMPAIGN LEVEL</small></div></div><p>Earn a point from each new victory. Unlock powerful abilities, then invest in your preferred doctrine. ${next?'Next milestone: level '+next+'.':'All milestone tiers revealed.'}</p><div class="techMilestone">${cavalry}<small>Fast units with momentum-based charge attacks</small></div></div><div class="researchTabs"><button type="button" class="button ${techSection==='doctrine'?'active':''}" data-tech-section="doctrine">War Doctrines</button><button type="button" class="button ${techSection==='foundation'?'active':''}" data-tech-section="foundation">Foundation Research</button></div>${techSection==='doctrine'?renderDoctrineTree(level,points):`<div id="upgradeTree">${cards}</div>`}<div class="techFooter"><span>Refund your upgrades freely to experiment with new strategies.</span><button class="button" id="resetTech">↶ Refund all upgrades</button></div>`;
+ return `<div class="techHero"><div class="techHeroStats"><div><span class="techPoints">${points}</span><small>UNSPENT POINTS</small></div><div><span class="techLevel">${level}</span><small>CAMPAIGN LEVEL</small></div></div><p>Earn a point from each new victory. Unlock powerful abilities, then invest in your preferred doctrine. ${next?'Next milestone: level '+next+'.':'All milestone tiers revealed.'}</p><div class="techMilestone">${cavalry}<small>Fast units with momentum-based charge attacks</small></div></div><div class="researchTabs"><button type="button" class="button ${techSection==='doctrine'?'active':''}" data-tech-section="doctrine">War Doctrines</button><button type="button" class="button ${techSection==='foundation'?'active':''}" data-tech-section="foundation">Foundation Research</button></div>${techSection==='doctrine'?renderDoctrineTree(level,points):`<div id="upgradeTree">${cards}</div>`}<div class="techFooter"><span>Research decisions are permanent in this campaign. Choose your path carefully.</span></div>`;
 }
 function showMenu(tab='play'){menuTab=tab;paused=true;$('pause').textContent='▶ Resume';$('overlay').classList.remove('hidden');tutorialRender();$('modal').classList.toggle('techMode',tab==='upgrades');let d=levelDesign(currentLevel),nav=`<div class="modalNav"><button class="button ${tab==='play'?'active':''}" data-tab="play">Campaign</button><button class="button ${tab==='upgrades'?'active':''}" data-tab="upgrades">Upgrade tree</button><button class="button ${tab==='levels'?'active':''}" data-tab="levels">Levels</button></div>`,body='';
 if(tab==='upgrades'){body=renderTechTree()}
@@ -449,7 +448,6 @@ for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>showMenu(b.
 for(const b of document.querySelectorAll('[data-buy]'))b.onclick=()=>buyMod(b.dataset.buy);
 for(const b of document.querySelectorAll('[data-tech-section]'))b.onclick=()=>{techSection=b.dataset.techSection;showMenu('upgrades')};
 for(const b of document.querySelectorAll('[data-school]'))b.onclick=()=>{doctrineFocus=b.dataset.school;showMenu('upgrades')};
-if($('resetTech'))$('resetTech').onclick=()=>{if(confirm('Refund all research points? Your campaign progress stays intact.'))resetTechTree()};
 for(const b of document.querySelectorAll('[data-level]'))b.onclick=()=>{currentLevel=+b.dataset.level;showMenu('play')};
 $('resumeGame').onclick=()=>{if(!menuFromPause||finished){startLevelAfterAdBreak();return}$('overlay').classList.add('hidden');paused=false;$('pause').textContent='Ⅱ Pause';tutorialRender()};
 $('restartLevel').onclick=()=>{difficulty=$('difficulty')?.value||difficulty;startLevel()};
