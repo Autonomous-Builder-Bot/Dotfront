@@ -55,6 +55,7 @@ function tutorialRender(){
  const step=tutorialSteps[tutorialIndex];
  const reading=step.event==='read';
  panel.classList.toggle('reading',reading);
+ panel.classList.toggle('controlsStep',['production','rally','upgrade'].includes(step.event));
  panel.classList.toggle('expanded',reading||tutorialDetailsOpen);
  $('production').classList.toggle('tutorialFocus',step.event==='production');$('upgrade').classList.toggle('tutorialFocus',step.event==='upgrade');
  $('tutorialBrief').textContent=tutorialBriefs[tutorialIndex];
