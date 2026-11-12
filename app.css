@@ -48,3 +48,29 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #upgrade.tutorialFocus{outline:2px solid #8fe5ff;outline-offset:3px;box-shadow:0 0 16px #63d6ff77}
 
 @media(orientation:landscape) and (max-height:500px){#tutorial{max-height:calc(100dvh - 48px)}}
+
+/* Discreet notification rail: above the battlefield, below the score bar.
+   Dismissal remains clickable; tapping anywhere else passes through to the game. */
+#toast{
+  top:clamp(76px,12vh,110px);
+  bottom:auto;
+  left:auto;
+  right:max(12px,env(safe-area-inset-right));
+  transform:translateY(-6px);
+  width:max-content;
+  max-width:min(310px,calc(100vw - 24px));
+  padding:7px 8px 7px 11px;
+  font-size:11px;
+  line-height:1.35;
+  text-align:left;
+  box-shadow:0 5px 14px #0007;
+  pointer-events:none;
+}
+#toast.show{transform:translateY(0);pointer-events:none}
+#toastDismiss{pointer-events:auto;min-width:27px;min-height:27px;font-size:17px}
+@media(max-width:700px) and (orientation:portrait){
+  #toast{top:max(85px,calc(env(safe-area-inset-top) + 74px));right:max(8px,env(safe-area-inset-right));max-width:min(270px,72vw)}
+}
+@media(orientation:landscape) and (max-height:500px){
+  #toast{top:max(44px,calc(env(safe-area-inset-top) + 34px));left:max(8px,env(safe-area-inset-left));right:auto;max-width:min(275px,40vw);padding:6px 7px 6px 9px}
+}
