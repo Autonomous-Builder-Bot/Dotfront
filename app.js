@@ -362,6 +362,23 @@ function mathMissionDesign(n,base){
   if(idx===-1)break;
   setups.splice(idx,1);
  }
+ // Enforce a minimum center-to-center distance even for inherited layout nodes.
+ // Starting HQs (indices 0 and 1) remain fixed; subsequent planets yield.
+ for(let i=2;i<setups.length;i++){
+  const p=setups[i];
+  for(let attempt=0;attempt<36;attempt++){
+   let nearest=null,nearestDist=Infinity;
+   for(let j=0;j<i;j++){
+    const q=setups[j],d=Math.hypot(q[0]-p[0],q[1]-p[1]);
+    if(d<nearestDist){nearest=q;nearestDist=d}
+   }
+   if(nearestDist>=132)break;
+   const a=Math.atan2(p[1]-nearest[1],p[0]-nearest[0])+(attempt%2===0?.16:-.16);
+   const targetR=144+attempt*3;
+   p[0]=Math.round(clamp(nearest[0]+Math.cos(a)*targetR,82,worldWidth-82));
+   p[1]=Math.round(clamp(nearest[1]+Math.sin(a)*targetR,90,worldHeight-90));
+  }
+ }
  const minSpacing=125,maxBridge=390;
  for(let k=0;setups.length<targetCount&&k<targetCount*220;k++){
   const teamSide=(setups.length%2===0)?0:1;
