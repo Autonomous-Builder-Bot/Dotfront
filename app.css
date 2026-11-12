@@ -128,3 +128,23 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 @media(max-width:700px) and (orientation:portrait){
   #tutorial.reading{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto;max-height:min(34dvh,235px)}
 }
+
+
+/* Battle pacing: Restart is separated from Pause to prevent accidental resets.
+   One compact speed control cycles 0.5× → 1× → 2×. */
+#tools{flex:1 1 auto;min-width:0}
+#restart{order:-1;border-color:#ffc47c6b}
+#tempoControls{display:flex;align-items:center;gap:6px;flex:0 0 auto;pointer-events:auto;padding:3px;background:#0b1830d9;border:1px solid #53709466;border-radius:11px}
+#tempoControls .button{min-height:40px}
+#speed{min-width:69px}
+#pause{min-width:80px}
+@media(max-width:700px){
+ #tools{max-width:100%;padding-bottom:48px}
+ #tempoControls{position:absolute;bottom:0;right:0}
+}
+@media(orientation:landscape) and (max-height:500px){
+ #actions{display:flex;align-items:flex-end;justify-content:space-between}
+ #tools{max-width:calc(100% - 174px);padding-bottom:0}
+ #tempoControls{position:static}
+ #tempoControls .button{min-height:36px}
+}
