@@ -69,8 +69,8 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 #toast.show{transform:translateY(0);pointer-events:none}
 #toastDismiss{pointer-events:auto;min-width:27px;min-height:27px;font-size:17px}
 @media(max-width:700px) and (orientation:portrait){
-  #toast{top:max(85px,calc(env(safe-area-inset-top) + 74px));right:max(8px,env(safe-area-inset-right));max-width:min(270px,72vw)}
+  #toast{top:max(118px,calc(env(safe-area-inset-top) + 60px));right:max(8px,env(safe-area-inset-right));max-width:min(270px,72vw)}
 }
 @media(orientation:landscape) and (max-height:500px){
-  #toast{top:max(44px,calc(env(safe-area-inset-top) + 34px));left:max(8px,env(safe-area-inset-left));right:auto;max-width:min(275px,40vw);padding:6px 7px 6px 9px}
+  #toast{top:max(55px,calc(env(safe-area-inset-top) + 48px));left:max(8px,env(safe-area-inset-left));right:auto;max-width:min(275px,40vw);padding:6px 7px 6px 9px}
 }
