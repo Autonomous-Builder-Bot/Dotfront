@@ -374,3 +374,36 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
  #tools .button,#production .button,#tempoControls .button{min-height:35px;padding:6px 8px;font-size:10px}
  #restart{margin-right:12px}
 }
+
+
+/* Optional battlefield magnification stays separate from tactical controls. */
+#zoomControls{
+ position:absolute;
+ top:max(83px,calc(env(safe-area-inset-top) + 70px));
+ left:max(9px,env(safe-area-inset-left));
+ display:flex;
+ flex-direction:column;
+ gap:5px;
+ z-index:3;
+ pointer-events:auto;
+}
+#zoomControls .button{
+ display:grid;place-items:center;
+ width:40px;height:40px;min-height:40px;
+ padding:0;
+ font-size:23px;
+ line-height:1;
+ font-weight:700;
+ border-radius:9px;
+ background:#112a46e8;
+ border-color:#7cb1dd85;
+}
+#zoomControls .button:disabled{opacity:.4}
+@media(max-width:700px) and (orientation:portrait){
+ #zoomControls{top:max(114px,calc(env(safe-area-inset-top) + 95px));left:max(7px,env(safe-area-inset-left));gap:5px}
+ #zoomControls .button{width:39px;height:39px;min-height:39px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ #zoomControls{top:max(50px,calc(env(safe-area-inset-top) + 43px));left:max(7px,env(safe-area-inset-left));gap:4px}
+ #zoomControls .button{width:35px;height:35px;min-height:35px;font-size:20px}
+}
