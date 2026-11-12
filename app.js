@@ -92,7 +92,7 @@ function tutorialBuildScene(index){
 
 function tutorialStart(force=false){
  if(!force){try{if(localStorage.getItem(TUTORIAL_KEY)==='done')return}catch(e){}}
- tutorialActive=true;tutorialIndex=0;tutorialStepDone=false;tutorialReadPause=false;tutorialScene='';tutorialBuildScene(0);tutorialPauseReading();tutorialRender();
+ tutorialActive=true;dismissToast();tutorialIndex=0;tutorialStepDone=false;tutorialReadPause=false;tutorialScene='';tutorialBuildScene(0);tutorialPauseReading();tutorialRender();
 }
 function tutorialFinish(){
  tutorialResumeReading();tutorialActive=false;tutorialScene='';$('tutorial').hidden=true;$('production').classList.remove('tutorialFocus');$('upgrade').classList.remove('tutorialFocus');
@@ -329,7 +329,7 @@ function checkEnd(){if(finished)return;let friendly=planets.filter(p=>p.team===0
 function formatTime(t){return Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0')}
 function updateHud(){cleanSelected();$('mycount').textContent=units.filter(u=>u.team===0).length;$('theircount').textContent=units.filter(u=>u.team===1).length;$('planetcount').textContent=planets.filter(p=>p.team===0).length+' – '+planets.filter(p=>p.team===1).length;$('clock').textContent=formatTime(elapsed);$('levelnum').textContent=currentLevel+'/'+CAMPAIGN_SIZE;$('production').classList.toggle('show',!!selectedPlanet);if(selectedPlanet){$('status').innerHTML=`<b style="color:#87e8ff">${selectedPlanet.name}</b> · Lv.${selectedPlanet.level}<br>${typeIcons[selectedPlanet.type]} ${selectedPlanet.type.toUpperCase()} · ${Math.ceil(selectedPlanet.hp)} HP · ${specs[selectedPlanet.type].period.toFixed(2)}s/unit<br>${selectedPlanet.rally?'Rally point active':'Click map to set rally'}`;$('upgrade').disabled=selectedPlanet.level>=3;for(const b of document.querySelectorAll('[data-type]'))b.classList.toggle('active',b.dataset.type===selectedPlanet.type)}else $('status').innerHTML=`<b>${selected.size} units selected</b><br>Drag to select · click to order`;$('modeMove').classList.toggle('active',!wallPlacement);const squares=[...selected].filter(u=>!u.dead&&u.team===0&&u.type==='square');$('shieldWall').hidden=!hasMod('expansion2')||squares.length<3;$('shieldWall').classList.toggle('active',wallPlacement)}
 function dismissToast(){toastTimer=0;$('toast').classList.remove('show')}
-function toast(s){$('toastText').textContent=s;$('toast').classList.add('show');toastTimer=3.5}
+function toast(s){if(tutorialActive){dismissToast();return}$('toastText').textContent=s;$('toast').classList.add('show');toastTimer=2.4}
 $('toastDismiss').addEventListener('click',e=>{e.stopPropagation();dismissToast()});$('toast').addEventListener('click',dismissToast);
 function drawGlow(x,y,r,color,alpha=.2){let grd=g.createRadialGradient(x,y,0,x,y,r);grd.addColorStop(0,color);grd.addColorStop(1,'transparent');g.save();g.globalAlpha=alpha;g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.restore()}
 function render(){g.setTransform(dpr,0,0,dpr,0,0);if(starBackground)g.drawImage(starBackground,0,0,width,height);else{g.fillStyle='#050919';g.fillRect(0,0,width,height)}g.save();g.beginPath();g.rect(0,0,width,height);g.clip();g.lineWidth=.6;g.strokeStyle='#5e88bc12';for(let x=0;x<=W;x+=100){let a=p2s(x,0),b=p2s(x,H);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}for(let y=0;y<=H;y+=100){let a=p2s(0,y),b=p2s(W,y);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}g.restore();
