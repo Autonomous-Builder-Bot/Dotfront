@@ -256,9 +256,50 @@ function levelBonuses(){
  };
  return cachedBonuses;
 }
-function buyMod(id){let m=MODS.find(m=>m.id===id);if(!m||hasMod(id)||m.req&&!hasMod(m.req)||modValue()<m.cost)return;progress.owned.push(id);saveProgress();showMenu('upgrades')}
+function buyMod(id){
+ const mastery=MASTERY.find(m=>m.id===id);
+ if(mastery){
+  const rank=rankOf(id);
+  if(rank>=mastery.costs.length||(mastery.req&&!hasMod(mastery.req))||progress.unlocked<mastery.levels[rank]||modValue()<mastery.costs[rank])return;
+  progress.ranks[id]=rank+1;
+ }else{
+  const m=MODS.find(m=>m.id===id);
+  if(!m||hasMod(id)||(m.req&&!hasMod(m.req))||progress.unlocked<(m.minLevel||1)||modValue()<m.cost)return;
+  progress.owned.push(id);
+ }
+ const scroll=$('modal').scrollTop;
+ saveProgress();showMenu('upgrades');$('modal').scrollTop=scroll;
+}
+function resetTechTree(){progress.owned=[];progress.ranks={};saveProgress();showMenu('upgrades')}
+const TECH_BRANCHES=[
+ {name:'Production',icon:'⚙',hint:'Build a larger army faster.'},
+ {name:'Combat',icon:'⬡',hint:'Hold ground and punish attacks.'},
+ {name:'Tactics',icon:'⌁',hint:'Win with formations and flanking.'},
+ {name:'Command',icon:'➤',hint:'Move reinforcements where they matter.'}
+];
+function renderTechTree(){
+ const level=progress.unlocked,points=modValue();
+ const milestones=[15,18,20,25,30,32,35,40,45,50,55,70,75,85,100,110,125,140,150];
+ const next=milestones.find(n=>n>level);
+ const techCard=m=>{
+  const mastery=Array.isArray(m.costs),rank=mastery?rankOf(m.id):(hasMod(m.id)?1:0),limit=mastery?m.costs.length:1,complete=rank>=limit;
+  const cost=complete?0:(mastery?m.costs[rank]:m.cost),gate=mastery?m.levels[rank]:(m.minLevel||1);
+  const needLevel=!complete&&level<gate,needReq=!complete&&m.req&&!hasMod(m.req),canBuy=!complete&&!needLevel&&!needReq&&points>=cost;
+  const reqName=m.req?(MODS.find(p=>p.id===m.req)?.title||m.req):'';
+  const state=complete?'MAXED':needLevel?'REACH LEVEL '+gate:needReq?'REQUIRES '+reqName:!canBuy?'NEED '+cost+' POINTS':'READY TO UNLOCK';
+  return `<button class="techNode ${complete?'owned':''} ${canBuy?'available':''}" data-buy="${m.id}" ${canBuy?'':'disabled'}><span class="techHead"><strong>${m.title}</strong><span class="techPrice">${complete?'✓':cost+' PT'}</span></span><span class="techDesc">${m.desc}</span><span class="techFoot"><span>${m.kind||'UPGRADE'} ${mastery?'· RANK '+rank+'/'+limit:''}</span><span class="techState">${state}</span></span></button>`;
+ };
+ const cards=TECH_BRANCHES.map(b=>{
+  const upgrades=[...MODS,...MASTERY].filter(m=>m.branch===b.name);
+  const owned=upgrades.reduce((n,m)=>n+(Array.isArray(m.costs)?rankOf(m.id):(hasMod(m.id)?1:0)),0);
+  const capacity=upgrades.reduce((n,m)=>n+(Array.isArray(m.costs)?m.costs.length:1),0);
+  return `<section class="techBranch" data-branch="${b.name}"><div class="techBranchHead"><span class="techCrest">${b.icon}</span><div><strong>${b.name.toUpperCase()}</strong><small>${b.hint}</small></div><span class="techProgress">${owned}/${capacity}</span></div><div class="techTrack"><div style="width:${(100*owned/capacity).toFixed(1)}%"></div></div><div class="techNodes">${upgrades.map(techCard).join('')}</div></section>`;
+ }).join('');
+ const cavalry=level>=20?'UNLOCKED — ❯ CAVALRY':'UNLOCKS AT LEVEL 20 — ❯ CAVALRY';
+ return `<div class="techHero"><div class="techHeroStats"><div><span class="techPoints">${points}</span><small>UNSPENT POINTS</small></div><div><span class="techLevel">${level}</span><small>CAMPAIGN LEVEL</small></div></div><p>Earn a point from each new victory. Unlock powerful abilities, then invest in your preferred doctrine. ${next?'Next milestone: level '+next+'.':'All milestone tiers revealed.'}</p><div class="techMilestone">${cavalry}<small>Fast units with momentum-based charge attacks</small></div></div><div id="upgradeTree">${cards}</div><div class="techFooter"><span>Refund your upgrades freely to experiment with new strategies.</span><button class="button" id="resetTech">↶ Refund all upgrades</button></div>`;
+}
 function showMenu(tab='play'){menuTab=tab;paused=true;$('pause').textContent='▶ Resume';$('overlay').classList.remove('hidden');tutorialRender();let d=levelDesign(currentLevel),nav=`<div class="modalNav"><button class="button ${tab==='play'?'active':''}" data-tab="play">Campaign</button><button class="button ${tab==='upgrades'?'active':''}" data-tab="upgrades">Upgrade tree</button><button class="button ${tab==='levels'?'active':''}" data-tab="levels">Levels</button></div>`,body='';
-if(tab==='upgrades'){body=`<p>Earn 1 upgrade point the first time you beat each level. <span id="upgradePoints">${modValue()} points available</span>.</p><div id="upgradeTree">${['Production','Combat','Tactics','Command'].map(branch=>`<div class="branch"><strong>${branch.toUpperCase()}</strong>${MODS.filter(m=>m.branch===branch).map(m=>{let owned=hasMod(m.id),locked=m.req&&!hasMod(m.req);return `<button class="button node ${owned?'owned':locked?'locked':''}" data-buy="${m.id}" ${owned||locked||modValue()<m.cost?'disabled':''}>${owned?'✓':locked?'🔒':'+'} ${m.title} · ${m.cost} pt${m.cost===1?'':'s'}<small>${m.desc}${locked?' · Requires '+MODS.find(o=>o.id===m.req).title:''}</small></button>`}).join('')}</div>`).join('')}</div><p class="subtle">All purchased upgrades apply to every future battle and replayed level.</p>`}
+if(tab==='upgrades'){body=renderTechTree()}
 else if(tab==='levels'){body=`<p>Select any unlocked level. Completed levels are marked ✓.</p><div id="levelChooser">${Array.from({length:CAMPAIGN_SIZE},(_,i)=>{let n=i+1,done=progress.completed.includes(n);return `<button class="button ${done?'done':''} ${n===currentLevel?'active':''}" data-level="${n}" ${n>progress.unlocked?'disabled':''}>${done?'✓ ':''}${n}</button>`}).join('')}</div>`}
 else body=`<div class="campaignInfo"><b>Level ${currentLevel} / ${CAMPAIGN_SIZE} — ${d.title}</b><br>${d.hint}<br>Enemy strategy: ${d.aiStyle} · ${d.setups.length} planets · Completed: ${progress.completed.length}/${CAMPAIGN_SIZE}<br><span class="subtle">Each level has a repeatable, seeded layout. The enemy evolves over the campaign.</span></div><label id="difficultyLabel" for="difficulty">ENEMY DIFFICULTY</label><select id="difficulty"><option value="easy">Easy — slower AI, 18s head start</option><option value="normal">Normal — balanced, 6s head start</option><option value="hard">Hard — faster AI, no head start</option></select>`;
 $('modal').innerHTML=`<h2>DOTFRONT</h2>${nav}${body}<div class="modalNav"><button class="button" id="resumeGame">${menuFromPause&&!finished?'RESUME':'CLOSE'}</button><button class="button" id="restartLevel">↺ RESTART LEVEL</button><button class="button" id="playLevel">▶ ${currentLevel===progress.unlocked&&!progress.completed.includes(currentLevel)?"CONTINUE":"PLAY"} LEVEL ${currentLevel}</button></div><div class="modalNav"><button class="button" id="tutorialReplay">? TUTORIAL</button><button class="button" id="exportSave">Export save</button><button class="button" id="importSave">Import save</button><input id="saveFile" type="file" accept="application/json,.json" style="display:none"></div>`;
@@ -267,6 +308,7 @@ $('exportSave').onclick=exportProgress;$('importSave').onclick=()=>$('saveFile')
 if($('difficulty'))$('difficulty').value=difficulty;
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>showMenu(b.dataset.tab);
 for(const b of document.querySelectorAll('[data-buy]'))b.onclick=()=>buyMod(b.dataset.buy);
+if($('resetTech'))$('resetTech').onclick=resetTechTree;
 for(const b of document.querySelectorAll('[data-level]'))b.onclick=()=>{currentLevel=+b.dataset.level;showMenu('play')};
 $('resumeGame').onclick=()=>{if(!menuFromPause||finished){startLevelAfterAdBreak();return}$('overlay').classList.add('hidden');paused=false;$('pause').textContent='Ⅱ Pause';tutorialRender()};
 $('restartLevel').onclick=()=>{difficulty=$('difficulty')?.value||difficulty;startLevel()};
