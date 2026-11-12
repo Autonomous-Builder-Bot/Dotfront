@@ -558,7 +558,7 @@ function refreshCamera(){
 }
 function zoomBy(factor){
  if(zoomFactor<=1.001&&factor>1){
-  const focus=selectedPlanet||([...selected].length?{x:[...selected].reduce((a,u)=>a+u.x,0)/selected.size,y:[...selected].reduce((a,u)=>a+u.y,0)/selected.size}:null);
+  const focus=selectedPlanet||([...selected].length?{x:[...selected].reduce((a,u)=>a+u.x,0)/selected.size,y:[...selected].reduce((a,u)=>a+u.y,0)/selected.size}:(planets.find(p=>p.team===0)||null));
   if(focus){cameraX=focus.x;cameraY=focus.y}
  }
  zoomFactor=clamp(Math.round(zoomFactor*factor*1000)/1000,1,2.8);
