@@ -35,6 +35,101 @@ const MASTERY=[
  {id:'tacticsmastery',branch:'Tactics',title:'Conquest Mastery',desc:'Another +5% capture damage per rank.',costs:[2,4,6,8,10],levels:[25,50,75,110,150],req:'expansion2',kind:'MASTERY'},
  {id:'commandmastery',branch:'Command',title:'Mobility Mastery',desc:'Another +4% friendly speed per rank.',costs:[2,4,6,8,10],levels:[20,45,75,110,150],req:'command2',kind:'MASTERY'}
 ];
+
+/* The universal technologies above remain purchasable for every army.
+   War doctrines below are a single, mutually-exclusive primary specialization.
+   Two separate forks per doctrine give players 5 x 2 x 2 distinct final builds. */
+const WAR_DOCTRINES=[
+ {id:'swarm',name:'Swarm Legion',glyph:'●',root:'doc_swarm_root',unit:'Circle',tagline:'Numbers, rapid production and mass attacks',strategy:'Win by flooding every front with light infantry.'},
+ {id:'iron',name:'Iron Legion',glyph:'■',root:'doc_iron_root',unit:'Square / Rectangle',tagline:'Heavy infantry, shields and breakthroughs',strategy:'Hold strong defensive lines, then break the enemy center.'},
+ {id:'ranged',name:'Star Archers',glyph:'▲',root:'doc_ranged_root',unit:'Triangle',tagline:'Long-range attacks and precision lasers',strategy:'Protect a deadly firing line and win engagements at range.'},
+ {id:'cavalry',name:'Shock Cavalry',glyph:'❯',root:'doc_cavalry_root',unit:'Cavalry',tagline:'Fast charges, flanks and pursuit',strategy:'Outmaneuver defenders and strike exposed sides.'},
+ {id:'balanced',name:'Combined Command',glyph:'✦',root:'doc_balanced_root',unit:'Mixed Army',tagline:'Flexible production and combined arms',strategy:'Combine all five unit types into coordinated formations.'}
+];
+const DOCTRINE_MODS=[
+ {id:'doc_swarm_root',school:'swarm',tier:1,title:'Mass Recruitment',desc:'Circles train 18% faster.',cost:3,minLevel:12},
+ {id:'doc_swarm_wave',school:'swarm',tier:2,title:'Volunteer Companies',desc:'Start each battle with 8 additional circles.',cost:8,minLevel:25,req:'doc_swarm_root'},
+ {id:'doc_swarm_march',school:'swarm',tier:2,title:'Forced March',desc:'Circles move 17% faster.',cost:8,minLevel:25,req:'doc_swarm_root'},
+ {id:'doc_swarm_pack',school:'swarm',tier:3,title:'Pack Hunters',desc:'Circles deal 22% more damage when fighting with nearby circles.',cost:12,minLevel:45},
+ {id:'doc_swarm_health',school:'swarm',tier:3,title:'Stubborn Recruits',desc:'Light infantry spawns with 20% more health.',cost:12,minLevel:45},
+ {id:'doc_swarm_master',school:'swarm',tier:4,title:'Endless Tide',desc:'Circles train 12% faster again; every sixth produced circle adds a free recruit.',cost:20,minLevel:75},
+ {id:'doc_iron_root',school:'iron',tier:1,title:'Heavy Foundries',desc:'Squares and rectangles train 15% faster.',cost:3,minLevel:12},
+ {id:'doc_iron_plates',school:'iron',tier:2,title:'Thick Plating',desc:'Heavy and super-heavy infantry gain 20% health.',cost:8,minLevel:25,req:'doc_iron_root'},
+ {id:'doc_iron_shields',school:'iron',tier:2,title:'Tower Shields',desc:'Squares gain 2 additional armor.',cost:8,minLevel:25,req:'doc_iron_root'},
+ {id:'doc_iron_phalanx',school:'iron',tier:3,title:'Phalanx Discipline',desc:'Squares fighting alongside another square deal 18% more damage.',cost:12,minLevel:45},
+ {id:'doc_iron_hammer',school:'iron',tier:3,title:'Siege Breakers',desc:'Rectangles inflict 30% more damage against enemy units.',cost:12,minLevel:45},
+ {id:'doc_iron_master',school:'iron',tier:4,title:'The Iron Legion',desc:'Squares and rectangles train another 15% faster; squares gain 1 armor.',cost:20,minLevel:75},
+ {id:'doc_ranged_root',school:'ranged',tier:1,title:'Longbow Forges',desc:'Archers train 18% faster.',cost:3,minLevel:12},
+ {id:'doc_ranged_scope',school:'ranged',tier:2,title:'Precision Optics',desc:'Archers gain 25% attack range.',cost:8,minLevel:25,req:'doc_ranged_root'},
+ {id:'doc_ranged_volley',school:'ranged',tier:2,title:'Rapid Volley',desc:'Archers fire 20% more frequently.',cost:8,minLevel:25,req:'doc_ranged_root'},
+ {id:'doc_ranged_pierce',school:'ranged',tier:3,title:'Piercing Rays',desc:'Archers ignore 3 points of enemy armor.',cost:12,minLevel:45},
+ {id:'doc_ranged_skirmish',school:'ranged',tier:3,title:'Mobile Archers',desc:'Archers move 20% faster.',cost:12,minLevel:45},
+ {id:'doc_ranged_master',school:'ranged',tier:4,title:'Rain of Light',desc:'Archers near allied archers inflict 25% more damage.',cost:20,minLevel:75},
+ {id:'doc_cavalry_root',school:'cavalry',tier:1,title:'Cavalry Academy',desc:'Cavalry trains 20% faster after the unit unlocks at level 20.',cost:3,minLevel:20},
+ {id:'doc_cavalry_shock',school:'cavalry',tier:2,title:'Shock Tactics',desc:'Greater damage from a full-speed cavalry charge.',cost:8,minLevel:25,req:'doc_cavalry_root'},
+ {id:'doc_cavalry_scout',school:'cavalry',tier:2,title:'Forward Scouts',desc:'Cavalry moves 20% faster.',cost:8,minLevel:25,req:'doc_cavalry_root'},
+ {id:'doc_cavalry_flank',school:'cavalry',tier:3,title:'Double Envelopment',desc:'Cavalry causes more damage when attacking from behind.',cost:12,minLevel:45},
+ {id:'doc_cavalry_lancers',school:'cavalry',tier:3,title:'Armored Lancers',desc:'Cavalry ignores 3 points of enemy armor.',cost:12,minLevel:45},
+ {id:'doc_cavalry_master',school:'cavalry',tier:4,title:'Relentless Pursuit',desc:'After defeating an enemy, cavalry gains a 25% speed boost for 5 seconds.',cost:20,minLevel:75},
+ {id:'doc_balanced_root',school:'balanced',tier:1,title:'Combined Workshops',desc:'All friendly production increases 8%.',cost:3,minLevel:12},
+ {id:'doc_balanced_speed',school:'balanced',tier:2,title:'Maneuver Doctrine',desc:'All friendly units move 10% faster.',cost:8,minLevel:25,req:'doc_balanced_root'},
+ {id:'doc_balanced_health',school:'balanced',tier:2,title:'Common Standards',desc:'All friendly units gain 10% health.',cost:8,minLevel:25,req:'doc_balanced_root'},
+ {id:'doc_balanced_pair',school:'balanced',tier:3,title:'Combined Arms',desc:'Troops deal 15% more damage near a different allied unit type.',cost:12,minLevel:45},
+ {id:'doc_balanced_guard',school:'balanced',tier:3,title:'Support Formations',desc:'Troops gain 1 armor near a different allied unit type.',cost:12,minLevel:45},
+ {id:'doc_balanced_master',school:'balanced',tier:4,title:'Grand Strategy',desc:'Production increases a further 8%; newly captured worlds deploy 4 circles.',cost:20,minLevel:75}
+].map(m=>({...m,branch:'Doctrine',kind:'SPECIALIZATION'}));
+MODS.push(...DOCTRINE_MODS);
+let techSection='doctrine',doctrineFocus='swarm';
+function chosenDoctrine(){return WAR_DOCTRINES.find(d=>progress.owned.includes(d.root))?.id||null}
+function doctrineConflict(m,owned=progress.owned){
+ if(!m.school)return false;
+ const selected=WAR_DOCTRINES.find(d=>owned.includes(d.root));
+ if(selected&&selected.id!==m.school)return true;
+ return DOCTRINE_MODS.some(other=>other.id!==m.id&&other.school===m.school&&other.tier===m.tier&&owned.includes(other.id));
+}
+function doctrinePriorTier(m,owned=progress.owned){
+ if(!m.school||m.tier<3)return true;
+ return DOCTRINE_MODS.some(prior=>prior.school===m.school&&prior.tier===m.tier-1&&owned.includes(prior.id));
+}
+function upgradeStatus(m,points=modValue(),level=progress.unlocked){
+ if(hasMod(m.id))return 'OWNED';
+ if(doctrineConflict(m))return chosenDoctrine()&&chosenDoctrine()!==m.school?'ANOTHER ARMY SELECTED':'OTHER PATH CHOSEN';
+ if(level<(m.minLevel||1))return 'LEVEL '+m.minLevel+' REQUIRED';
+ if(m.req&&!hasMod(m.req))return 'REQUIRES '+(MODS.find(x=>x.id===m.req)?.title||m.req);
+ if(!doctrinePriorTier(m))return 'REQUIRES PREVIOUS FORK';
+ if(points<m.cost)return 'NEED '+(m.cost-points)+' MORE POINTS';
+ return 'READY TO RESEARCH';
+}
+function renderDoctrineTree(level,points){
+ const active=chosenDoctrine(),school=WAR_DOCTRINES.find(d=>d.id===doctrineFocus)||WAR_DOCTRINES[0];
+ const picker=WAR_DOCTRINES.map(d=>{
+  const owned=active===d.id,locked=active&&active!==d.id;
+  return `<button type="button" class="doctrineSchool ${d.id===school.id?'selected':''} ${owned?'committed':''}" data-school="${d.id}" aria-pressed="${d.id===school.id}">
+    <span class="doctrineGlyph">${d.glyph}</span><span class="doctrineName">${d.name}</span>
+    <small>${owned?'YOUR ARMY':locked?'VIEW ONLY':d.unit}</small>
+   </button>`;
+ }).join('');
+ const nodeCard=m=>{
+  const status=upgradeStatus(m,points,level),owned=status==='OWNED',ready=status==='READY TO RESEARCH';
+  return `<button type="button" class="doctrineNode ${owned?'owned':ready?'available':'locked'}" data-buy="${m.id}" ${ready?'':'disabled'}>
+    <span class="doctrineNodeTitle"><strong>${m.title}</strong><b>${owned?'✓':m.cost+' PT'}</b></span>
+    <span class="doctrineNodeDesc">${m.desc}</span>
+    <span class="doctrineNodeState">${status}</span>
+   </button>`;
+ };
+ const rows=[1,2,3,4].map(t=>{
+  const nodes=DOCTRINE_MODS.filter(m=>m.school===school.id&&m.tier===t);
+  const title=t===1?'CHOOSE YOUR ARMY':t===2?'FIRST FORK — PICK ONE':t===3?'SECOND FORK — PICK ONE':'FINAL MASTERY';
+  return `<div class="doctrineTier"><div class="doctrineTierCaption"><span>0${t}</span> ${title}</div><div class="doctrineTierNodes ${nodes.length===2?'fork':''}">${nodes.map(nodeCard).join('')}</div></div>`;
+ }).join('');
+ const spent=DOCTRINE_MODS.filter(m=>m.school===school.id&&hasMod(m.id)).length;
+ return `<section class="doctrineLab"><div class="doctrineIntro"><strong>Choose your war doctrine</strong><span>One primary army, two tactical forks, one ultimate mastery</span></div>
+  <div class="doctrinePicker">${picker}</div>
+  <div class="doctrineBanner"><div><strong>${school.glyph} ${school.name}</strong><small>${school.tagline}</small></div><span>${spent}/4</span></div>
+  <p class="doctrineStrategy">${school.strategy}</p>
+  <div class="doctrinePath">${rows}</div>
+  <p class="doctrineDisclaimer">${active?'Your active doctrine is '+WAR_DOCTRINES.find(d=>d.id===active).name+'.':'Buying the first technology commits your army to that doctrine.'} Other doctrines and alternative fork choices remain locked until you refund research. All existing upgrades and campaign progress are preserved.</p></section>`;
+}
 const rankOf=id=>Math.max(0,Math.min(5,Math.floor(progress.ranks?.[id]||0)));
 const cavalryUnlocked=()=>progress.unlocked>=20;
 const SAVE_KEY='dotfront_campaign_v1';const BACKUP_KEY='dotfront_campaign_backup_v1';const LEGACY_SAVE_KEY='starforge_campaign_v1';const LEGACY_BACKUP_KEY='starforge_campaign_backup_v1';function loadProgress(){try{let raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(BACKUP_KEY)||localStorage.getItem(LEGACY_SAVE_KEY)||localStorage.getItem(LEGACY_BACKUP_KEY)||'{}';if(raw.length>100000)throw Error('Save too large');let o=JSON.parse(raw);return{unlocked:clamp(Math.floor(o.unlocked||1),1,CAMPAIGN_SIZE),completed:Array.isArray(o.completed)?o.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE):[],owned:Array.isArray(o.owned)?[...new Set(o.owned.filter(v=>MODS.some(m=>m.id===v)))]:[],ranks:Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(o.ranks?.[m.id])||0)))]))}}catch(e){return{unlocked:1,completed:[],owned:[],ranks:{}}}}let progress=loadProgress(),currentLevel=progress.unlocked,menuTab='play',menuFromPause=false;
@@ -185,6 +280,12 @@ function importProgress(file){if(!file||file.size>100000){toast('Save must be a 
  if(cost>completed.length)throw Error('Invalid upgrade balance');
  for(const id of owned){const req=MODS.find(m=>m.id===id)?.req;if(req&&!owned.includes(req))throw Error('Invalid upgrade tree')}
  for(const m of MASTERY)if(ranks[m.id]&&m.req&&!owned.includes(m.req))throw Error('Invalid mastery tree');
+ const chosen=WAR_DOCTRINES.filter(d=>owned.includes(d.root));
+ if(chosen.length>1)throw Error('Multiple primary doctrines');
+ for(const id of owned){
+  const m=DOCTRINE_MODS.find(n=>n.id===id);if(!m)continue;
+  if(chosen.length!==1||chosen[0].id!==m.school||doctrineConflict(m,owned)||!doctrinePriorTier(m,owned))throw Error('Invalid doctrine specialization');
+ }
  const unlocked=Math.min(CAMPAIGN_SIZE,Math.max(1,...completed.map(n=>n+1)));progress={completed,unlocked,owned,ranks};saveProgress();currentLevel=unlocked;menuFromPause=false;showMenu('play');toast('Save imported successfully.');}).catch(()=>toast('Could not import save. Check file format.'))}
 
 function hasMod(id){return progress.owned.includes(id)}
@@ -264,7 +365,7 @@ function buyMod(id){
   progress.ranks[id]=rank+1;
  }else{
   const m=MODS.find(m=>m.id===id);
-  if(!m||hasMod(id)||(m.req&&!hasMod(m.req))||progress.unlocked<(m.minLevel||1)||modValue()<m.cost)return;
+  if(!m||hasMod(id)||(m.req&&!hasMod(m.req))||progress.unlocked<(m.minLevel||1)||modValue()<m.cost||doctrineConflict(m)||!doctrinePriorTier(m))return;
   progress.owned.push(id);
  }
  const scroll=$('modal').scrollTop;
@@ -296,7 +397,7 @@ function renderTechTree(){
   return `<section class="techBranch" data-branch="${b.name}"><div class="techBranchHead"><span class="techCrest">${b.icon}</span><div><strong>${b.name.toUpperCase()}</strong><small>${b.hint}</small></div><span class="techProgress">${owned}/${capacity}</span></div><div class="techTrack"><div style="width:${(100*owned/capacity).toFixed(1)}%"></div></div><div class="techNodes">${upgrades.map(techCard).join('')}</div></section>`;
  }).join('');
  const cavalry=level>=20?'UNLOCKED — ❯ CAVALRY':'UNLOCKS AT LEVEL 20 — ❯ CAVALRY';
- return `<div class="techHero"><div class="techHeroStats"><div><span class="techPoints">${points}</span><small>UNSPENT POINTS</small></div><div><span class="techLevel">${level}</span><small>CAMPAIGN LEVEL</small></div></div><p>Earn a point from each new victory. Unlock powerful abilities, then invest in your preferred doctrine. ${next?'Next milestone: level '+next+'.':'All milestone tiers revealed.'}</p><div class="techMilestone">${cavalry}<small>Fast units with momentum-based charge attacks</small></div></div><div id="upgradeTree">${cards}</div><div class="techFooter"><span>Refund your upgrades freely to experiment with new strategies.</span><button class="button" id="resetTech">↶ Refund all upgrades</button></div>`;
+ return `<div class="techHero"><div class="techHeroStats"><div><span class="techPoints">${points}</span><small>UNSPENT POINTS</small></div><div><span class="techLevel">${level}</span><small>CAMPAIGN LEVEL</small></div></div><p>Earn a point from each new victory. Unlock powerful abilities, then invest in your preferred doctrine. ${next?'Next milestone: level '+next+'.':'All milestone tiers revealed.'}</p><div class="techMilestone">${cavalry}<small>Fast units with momentum-based charge attacks</small></div></div><div class="researchTabs"><button type="button" class="button ${techSection==='doctrine'?'active':''}" data-tech-section="doctrine">War Doctrines</button><button type="button" class="button ${techSection==='foundation'?'active':''}" data-tech-section="foundation">Foundation Research</button></div>${techSection==='doctrine'?renderDoctrineTree(level,points):`<div id="upgradeTree">${cards}</div>`}<div class="techFooter"><span>Refund your upgrades freely to experiment with new strategies.</span><button class="button" id="resetTech">↶ Refund all upgrades</button></div>`;
 }
 function showMenu(tab='play'){menuTab=tab;paused=true;$('pause').textContent='▶ Resume';$('overlay').classList.remove('hidden');tutorialRender();$('modal').classList.toggle('techMode',tab==='upgrades');let d=levelDesign(currentLevel),nav=`<div class="modalNav"><button class="button ${tab==='play'?'active':''}" data-tab="play">Campaign</button><button class="button ${tab==='upgrades'?'active':''}" data-tab="upgrades">Upgrade tree</button><button class="button ${tab==='levels'?'active':''}" data-tab="levels">Levels</button></div>`,body='';
 if(tab==='upgrades'){body=renderTechTree()}
@@ -308,7 +409,9 @@ $('exportSave').onclick=exportProgress;$('importSave').onclick=()=>$('saveFile')
 if($('difficulty'))$('difficulty').value=difficulty;
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>showMenu(b.dataset.tab);
 for(const b of document.querySelectorAll('[data-buy]'))b.onclick=()=>buyMod(b.dataset.buy);
-if($('resetTech'))$('resetTech').onclick=resetTechTree;
+for(const b of document.querySelectorAll('[data-tech-section]'))b.onclick=()=>{techSection=b.dataset.techSection;showMenu('upgrades')};
+for(const b of document.querySelectorAll('[data-school]'))b.onclick=()=>{doctrineFocus=b.dataset.school;showMenu('upgrades')};
+if($('resetTech'))$('resetTech').onclick=()=>{if(confirm('Refund all research points? Your campaign progress stays intact.'))resetTechTree()};
 for(const b of document.querySelectorAll('[data-level]'))b.onclick=()=>{currentLevel=+b.dataset.level;showMenu('play')};
 $('resumeGame').onclick=()=>{if(!menuFromPause||finished){startLevelAfterAdBreak();return}$('overlay').classList.add('hidden');paused=false;$('pause').textContent='Ⅱ Pause';tutorialRender()};
 $('restartLevel').onclick=()=>{difficulty=$('difficulty')?.value||difficulty;startLevel()};
