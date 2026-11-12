@@ -30,7 +30,21 @@ const tutorialSteps=[
  {title:'Upgrade your planet',event:'upgrade',scene:'planet',body:'We placed <b>20 practice dots</b> beside HOME. Tap HOME if needed, then press <b>⬆ Upgrade · 20</b>. The planet consumes 20 nearby dots to become stronger.<br><small>You can also order 20+ dots onto a friendly planet. Use Skip Step if this does not work.</small>'},
  {title:'Ready for the campaign',event:'read',scene:'planet',body:'You have practiced selecting, moving, battling, capturing, producing and upgrading.<br><b>Pause</b> stops combat but allows commands. In <b>Menu → Upgrade Tree</b> you can buy permanent improvements.<br><b>Shield Wall</b> is a later Tactics unlock: select 3+ squares, tap Shield Wall, and drag a defensive line.<br><small>Finish to enter your saved campaign level. Replay training from the Menu anytime.</small>'}
 ];
-let tutorialActive=false,tutorialIndex=0,tutorialStepDone=false,tutorialReadPause=false,tutorialScene='',tutorialFoeId=null;
+let tutorialActive=false,tutorialIndex=0,tutorialStepDone=false,tutorialReadPause=false,tutorialScene='',tutorialFoeId=null,tutorialDetailsOpen=false;
+const tutorialBriefs=[
+ 'Blue dots are yours; red is the enemy. Learn each control in a tiny battle.',
+ 'Tap one blue circle to select it.',
+ 'Drag a box around two or more blue circles.',
+ 'Tap empty space to move your selected dots.',
+ 'Select both blue circles, then attack the red triangle.',
+ 'Select the blue rectangle, then attack the red triangle.',
+ 'Select your blue squad and tap the gray planet.',
+ 'Tap your blue HOME planet.',
+ 'Choose a unit shape in the production bar.',
+ 'Tap empty ground to send new units to a rally point.',
+ 'Tap Upgrade · 20 to improve HOME.',
+ 'Training complete. Start your campaign.'
+];
 function tutorialPauseReading(){if(!paused&&!finished){paused=true;$('pause').textContent='▶ Resume';tutorialReadPause=true}}
 function tutorialResumeReading(){if(tutorialReadPause&&!finished){paused=false;$('pause').textContent='Ⅱ Pause'}tutorialReadPause=false}
 function tutorialRender(){
@@ -39,7 +53,16 @@ function tutorialRender(){
  panel.hidden=!tutorialActive||!$('overlay').classList.contains('hidden');
  if(panel.hidden)return;
  const step=tutorialSteps[tutorialIndex];
- panel.classList.toggle('reading',step.event==='read');$('production').classList.toggle('tutorialFocus',step.event==='production');$('upgrade').classList.toggle('tutorialFocus',step.event==='upgrade');
+ const reading=step.event==='read';
+ panel.classList.toggle('reading',reading);
+ panel.classList.toggle('expanded',reading||tutorialDetailsOpen);
+ $('production').classList.toggle('tutorialFocus',step.event==='production');$('upgrade').classList.toggle('tutorialFocus',step.event==='upgrade');
+ $('tutorialBrief').textContent=tutorialBriefs[tutorialIndex];
+ $('tutorialBrief').hidden=reading;
+ $('tutorialBody').hidden=!reading&&!tutorialDetailsOpen;
+ $('tutorialDetails').hidden=reading;
+ $('tutorialDetails').textContent=tutorialDetailsOpen?'Less help':'More help';
+ $('tutorialDetails').setAttribute('aria-expanded',String(tutorialDetailsOpen));
  $('tutorialCount').textContent='STEP '+(tutorialIndex+1)+' OF '+tutorialSteps.length;
  $('tutorialTitle').textContent=step.title;
  $('tutorialBody').innerHTML=step.body;
@@ -92,7 +115,7 @@ function tutorialBuildScene(index){
 
 function tutorialStart(force=false){
  if(!force){try{if(localStorage.getItem(TUTORIAL_KEY)==='done')return}catch(e){}}
- tutorialActive=true;dismissToast();tutorialIndex=0;tutorialStepDone=false;tutorialReadPause=false;tutorialScene='';tutorialBuildScene(0);tutorialPauseReading();tutorialRender();
+ tutorialActive=true;dismissToast();tutorialIndex=0;tutorialDetailsOpen=false;tutorialStepDone=false;tutorialReadPause=false;tutorialScene='';tutorialBuildScene(0);tutorialPauseReading();tutorialRender();
 }
 function tutorialFinish(){
  tutorialResumeReading();tutorialActive=false;tutorialScene='';$('tutorial').hidden=true;$('production').classList.remove('tutorialFocus');$('upgrade').classList.remove('tutorialFocus');
@@ -104,7 +127,7 @@ function tutorialNext(skip=false){
  const step=tutorialSteps[tutorialIndex];
  if(!skip&&step.event!=='read'&&!tutorialStepDone)return;
  if(tutorialIndex===tutorialSteps.length-1){tutorialFinish();return}
- tutorialResumeReading();tutorialIndex++;tutorialStepDone=false;tutorialBuildScene(tutorialIndex);if(tutorialSteps[tutorialIndex].event==='read')tutorialPauseReading();tutorialRender();
+ tutorialResumeReading();tutorialIndex++;tutorialDetailsOpen=false;tutorialStepDone=false;tutorialBuildScene(tutorialIndex);if(tutorialSteps[tutorialIndex].event==='read')tutorialPauseReading();tutorialRender();
 }
 function tutorialAction(action,details){
  if(!tutorialActive||tutorialStepDone||!$('overlay').classList.contains('hidden'))return;
@@ -116,6 +139,7 @@ function tutorialAction(action,details){
 }
 $('tutorialNext').onclick=()=>tutorialNext();
 $('tutorialSkip').onclick=()=>tutorialNext(true);
+$('tutorialDetails').onclick=()=>{tutorialDetailsOpen=!tutorialDetailsOpen;tutorialRender()};
 $('tutorialExit').onclick=()=>tutorialFinish();
 
 function saveProgress(){const encoded=JSON.stringify(progress);try{const old=localStorage.getItem(SAVE_KEY);if(old)localStorage.setItem(BACKUP_KEY,old);localStorage.setItem(SAVE_KEY,encoded)}catch(e){console.warn('Dotfront: local save unavailable');}window.DotfrontPlaygama?.write(SAVE_KEY,encoded)}
