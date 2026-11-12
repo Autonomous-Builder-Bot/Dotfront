@@ -213,3 +213,73 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
  #production.show{max-width:calc(100vw - 175px);flex-wrap:wrap}
  #production .techAbility{min-height:32px}
 }
+
+/* Branching War Academy: visible tier-to-tier connections and exclusive
+   left/right decisions. The player can inspect every doctrine before buying. */
+.researchTabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+#modal.techMode .researchTabs>.button{margin:0;min-height:43px;padding:9px 12px;font-size:12px}
+.doctrineLab{background:linear-gradient(165deg,#0c192d,#071120);border:1px solid #48647e;border-radius:16px;padding:14px;margin-top:10px}
+.doctrineIntro{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+.doctrineIntro>strong{font-size:15px;color:#e9f8ff}
+.doctrineIntro>span{font-size:11px;color:#a1bacf}
+.doctrinePicker{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.doctrineSchool{font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:86px;padding:9px 5px;border:1px solid #365675;border-radius:10px;color:#c7dbea;background:#101f35;touch-action:manipulation;cursor:pointer}
+.doctrineSchool.selected{background:#183850;border-color:#77d9f7;box-shadow:inset 0 0 0 1px #77d9f744}
+.doctrineSchool.committed{border-color:#7bd8b1}
+.doctrineGlyph{font-size:26px;line-height:1;color:#8bdfff;font-weight:900}
+.doctrineName{font-size:11px;line-height:1.2;font-weight:850;text-align:center}
+.doctrineSchool small{font-size:9px;line-height:1.1;color:#a2bbcf;text-align:center}
+.doctrineSchool:focus-visible{outline:2px solid #9ee9ff;outline-offset:2px}
+.doctrineBanner{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 13px;margin:14px 0 0;border:1px solid #3b6d84;border-radius:12px;background:linear-gradient(105deg,#173752,#102036)}
+.doctrineBanner strong{display:block;color:#eaf9ff;font-size:17px}
+.doctrineBanner small{display:block;color:#a9c6dc;font-size:11px;margin-top:4px}
+.doctrineBanner>span{font-size:17px;white-space:nowrap;color:#9ce7d4;font-weight:900}
+.doctrineStrategy{font-size:11px;color:#b1cde3;margin:8px 3px 16px;line-height:1.45}
+.doctrinePath{display:flex;flex-direction:column;align-items:center}
+.doctrineTier{width:min(100%,650px);position:relative;margin-bottom:22px}
+.doctrineTier:not(:last-child)::after{content:'';position:absolute;bottom:-22px;left:50%;height:22px;width:2px;background:linear-gradient(#80d9f9,#315677)}
+.doctrineTierCaption{display:flex;align-items:center;justify-content:center;gap:7px;color:#97c8e2;letter-spacing:1.4px;font-size:10px;font-weight:800;margin-bottom:7px}
+.doctrineTierCaption>span{color:#ffe4a1}
+.doctrineTierNodes{display:grid;grid-template-columns:minmax(0,1fr);justify-content:center;gap:10px}
+.doctrineTierNodes.fork{grid-template-columns:repeat(2,minmax(0,1fr));padding-top:7px;position:relative}
+.doctrineTierNodes.fork::before{content:'';position:absolute;top:0;left:25%;right:25%;border-top:2px solid #496d88}
+.doctrineTierNodes.fork::after{content:'';position:absolute;top:-11px;left:50%;height:11px;border-left:2px solid #496d88}
+.doctrineNode{display:flex;flex-direction:column;gap:6px;align-items:stretch;text-align:left;min-height:97px;padding:12px;border:1px solid #42627d;background:#112238;border-radius:11px;color:#e7f4ff;font:inherit;white-space:normal;touch-action:manipulation;cursor:pointer}
+.doctrineNode.available{border-color:#7fe4fa;background:linear-gradient(140deg,#193e5b,#102a42);box-shadow:0 0 12px #54ddf52b}
+.doctrineNode.owned{border-color:#6bbd9b;background:#10342f}
+.doctrineNode.locked{opacity:.66;cursor:default}
+.doctrineNodeTitle{display:flex;justify-content:space-between;align-items:flex-start;gap:9px}
+.doctrineNodeTitle strong{font-size:12px;color:#e9f8ff}
+.doctrineNodeTitle b{font-size:10px;color:#ffe39c;white-space:nowrap}
+.doctrineNode.owned .doctrineNodeTitle b{color:#9ff3c5}
+.doctrineNodeDesc{font-size:11px;line-height:1.38;color:#bbd1e6;font-weight:400}
+.doctrineNodeState{margin-top:auto;color:#9fb6cd;font-size:9px;font-weight:850;letter-spacing:.6px}
+.doctrineNode.available .doctrineNodeState{color:#8beaff}
+.doctrineNode.owned .doctrineNodeState{color:#a4ecd2}
+.doctrineNode.available:hover,.doctrineNode.available:focus-visible{outline:2px solid #b4f4ff;outline-offset:1px}
+.doctrineDisclaimer{margin:5px 0 0!important;padding:10px;background:#0d2234;border:1px solid #34506b;border-radius:10px;color:#aec5d9;font-size:11px!important;line-height:1.5!important}
+@media(max-width:700px){
+ .doctrineLab{padding:10px}
+ .doctrineIntro{display:block}
+ .doctrineIntro>strong,.doctrineIntro>span{display:block}
+ .doctrineIntro>span{margin-top:4px}
+ .doctrinePicker{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .doctrineSchool{min-height:64px;padding:6px 3px;gap:2px}
+ .doctrineGlyph{font-size:21px}
+ .doctrineName{font-size:10px}
+ .doctrineSchool small{font-size:8px}
+ .doctrineNode{min-height:105px;padding:9px}
+ .doctrineNodeTitle{display:block}
+ .doctrineNodeTitle strong{font-size:11px}
+ .doctrineNodeTitle b{display:block;margin-top:4px}
+ .doctrineNodeDesc{font-size:10px}
+ .doctrineNodeState{font-size:8px}
+ .doctrineTierNodes.fork{gap:7px}
+ .doctrineBanner strong{font-size:15px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ .doctrinePicker{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .doctrineSchool{min-height:65px}
+ #modal.techMode{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){.doctrineNode,.doctrineSchool{transition:none}}
