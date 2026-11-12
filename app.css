@@ -283,3 +283,94 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
  #modal.techMode{padding:12px}
 }
 @media(prefers-reduced-motion:reduce){.doctrineNode,.doctrineSchool{transition:none}}
+
+
+/* Single-row battle toolbar: keep actions reachable without stacking.
+   The left rail scrolls horizontally; pause/speed remain docked on the right. */
+#actions{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:nowrap;
+ align-items:center;
+ justify-content:space-between;
+ gap:8px;
+ min-width:0;
+}
+#tools{
+ display:flex;
+ flex:1 1 auto;
+ max-width:none;
+ min-width:0;
+ flex-wrap:nowrap;
+ align-items:center;
+ justify-content:flex-start;
+ gap:5px;
+ overflow-x:auto;
+ overflow-y:hidden;
+ -webkit-overflow-scrolling:touch;
+ overscroll-behavior-x:contain;
+ touch-action:pan-x;
+ scrollbar-width:thin;
+ scrollbar-color:#5f8aaf55 transparent;
+ padding:3px 3px 5px 0;
+}
+#tools::-webkit-scrollbar{height:3px}
+#tools::-webkit-scrollbar-thumb{background:#5f8aaf7a;border-radius:5px}
+#tools>.button{flex:0 0 auto}
+#production,#production.show{
+ flex:0 0 auto;
+ width:max-content;
+ max-width:none;
+ flex-wrap:nowrap;
+ align-items:center;
+ gap:5px;
+}
+#production .button{flex:0 0 auto}
+#production::before{width:auto;flex:0 0 auto;margin-right:2px}
+#tempoControls{
+ position:static;
+ flex:0 0 auto;
+ display:flex;
+ flex-wrap:nowrap;
+ align-items:center;
+ gap:5px;
+ padding:3px;
+}
+#tempoControls .button{flex:0 0 auto}
+#restart{margin-right:14px}
+#status{
+ position:absolute;
+ bottom:calc(100% + 8px);
+ right:0;
+ left:auto;
+ max-width:min(260px,50vw);
+ min-width:0;
+ pointer-events:none;
+}
+@media(max-width:1050px){
+ #production::before{display:none}
+ #actions{gap:5px}
+ #tools{gap:4px}
+ #production,#production.show{gap:4px}
+ #tools .button,#production .button{font-size:11px;padding:8px 9px;min-height:39px}
+ #tempoControls .button{font-size:11px;padding:8px 9px;min-height:39px}
+ #speed{min-width:61px}
+ #pause{min-width:73px}
+}
+@media(max-width:700px){
+ #actions{display:flex;align-items:center;bottom:max(7px,env(safe-area-inset-bottom))}
+ #tools{max-width:none;padding:3px 2px 5px 0;justify-content:flex-start}
+ #production,#production.show{flex-wrap:nowrap;width:max-content}
+ #tempoControls{position:static}
+ #status{display:none}
+ #restart{margin-right:11px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ #actions{display:flex;align-items:center;justify-content:space-between}
+ #tools{max-width:none;flex:1 1 auto;padding:2px 2px 4px 0;flex-wrap:nowrap}
+ #production,#production.show{max-width:none;flex-wrap:nowrap;width:max-content}
+ #tempoControls{position:static}
+ #production::before{display:none}
+ #tools .button,#production .button,#tempoControls .button{min-height:35px;padding:6px 8px;font-size:10px}
+ #restart{margin-right:12px}
+}
