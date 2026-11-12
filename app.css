@@ -74,3 +74,57 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 @media(orientation:landscape) and (max-height:500px){
   #toast{top:max(55px,calc(env(safe-area-inset-top) + 48px));left:max(8px,env(safe-area-inset-left));right:auto;max-width:min(275px,40vw);padding:6px 7px 6px 9px}
 }
+
+/* Playgama tutorial usability: small edge-docked task card, NOT a centered
+   overlay on the units. Text can expand on request and never blocks touch
+   gestures outside the card. The old CONTROLS panel is intentionally removed. */
+#tip{display:none!important}
+#tutorial{left:auto;right:max(10px,env(safe-area-inset-right));top:max(66px,calc(env(safe-area-inset-top) + 50px));bottom:auto;transform:none;width:min(340px,32vw);max-height:min(57dvh,320px);padding:10px 12px;gap:3px}
+#tutorial.expanded{max-height:min(66dvh,390px)}
+#tutorialCount{flex:1;white-space:nowrap}
+#tutorialTitle{font-size:14px;line-height:1.3;margin:0}
+#tutorialBrief{font-size:12px;line-height:1.4;color:#d6e9f7}
+#tutorialBody[hidden],#tutorialBrief[hidden],#tutorialDetails[hidden]{display:none!important}
+#tutorialBody{flex:1;min-height:0;overflow-y:auto;max-height:200px}
+#tutorial .tutorialDetails{appearance:none;background:transparent;border:0;padding:3px 6px;color:#8bdcff;font:600 11px system-ui;white-space:nowrap;min-height:30px;touch-action:manipulation;cursor:pointer}
+#tutorial .tutorialDetails:focus-visible{outline:2px solid #8bdcff}
+#tutorialFeedback{margin:2px 0;color:#aee4d6}
+#tutorial .tutorialButtons{gap:5px;justify-content:space-between}
+#tutorial .tutorialButtons .button{padding:6px 10px;min-height:34px;font-size:11px}
+@media (max-width:700px) and (orientation:portrait){
+  #tutorial{
+    top:auto;bottom:max(83px,calc(env(safe-area-inset-bottom) + 74px));
+    left:max(8px,env(safe-area-inset-left));
+    right:max(8px,env(safe-area-inset-right));
+    width:auto;max-height:min(28dvh,190px);padding:8px 10px;
+    border-radius:12px;
+  }
+  #tutorial.expanded{max-height:min(49dvh,330px)}
+  #tutorial.reading{max-height:min(46dvh,320px)}
+  #tutorialTitle{font-size:13px}
+  #tutorialBrief{font-size:11px;line-height:1.3}
+  #tutorialFeedback{font-size:10px}
+}
+@media (orientation:landscape) and (max-height:500px){
+  #tutorial{
+    top:max(45px,calc(env(safe-area-inset-top) + 39px));bottom:auto;
+    left:auto;right:max(8px,env(safe-area-inset-right));transform:none;
+    width:min(300px,35vw);max-height:calc(100dvh - 95px);
+    padding:8px 10px;gap:2px;
+  }
+  #tutorial.expanded,#tutorial.reading{max-height:calc(100dvh - 55px)}
+  #tutorialTitle{font-size:13px}
+  #tutorialBrief{font-size:11px}
+  #tutorial .tutorialButtons .button{padding:5px 8px;min-height:30px;font-size:10px}
+}
+
+/* When the production/upgrade toolbar expands at the bottom of a portrait
+   phone, dock the lesson at the top instead of covering those buttons. */
+@media(max-width:700px) and (orientation:portrait){
+  #tutorial.controlsStep{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto}
+}
+
+/* Reading-only tutorial slides stay above the unit training area. */
+@media(max-width:700px) and (orientation:portrait){
+  #tutorial.reading{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto;max-height:min(34dvh,235px)}
+}
