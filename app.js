@@ -550,7 +550,7 @@ if(ep&&epd<attackRange&&spec.capture){
  if(u.cooldown<=0&&ep.shield<=0){
   const healthFactor=.3+.7*clamp(u.hp/u.maxHp,0,1);
   const captureDamage=spec.damage*.7*healthFactor*(u.team===0?levelBonuses().capture*levelBonuses().damage:1)*(u.team===0&&u.type==='triangle'&&hasMod('expansion1')?2:1);
-  ep.hp-=captureDamage*(ep.team===0&&ep.fortify>0?.65:1);u.cooldown=spec.attackPeriod;ep.flash=.22;
+  ep.hp-=captureDamage*(ep.team===0&&ep.fortify>0?.65:1);u.cooldown=spec.attackPeriod*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_volley')?.8:1);ep.flash=.22;
   if(spec.ranged)lasers.push({x1:u.x,y1:u.y,x2:ep.x,y2:ep.y,team:u.team,life:.16,max:.16});
   else burst(ep.x+rand(-ep.r,ep.r),ep.y+rand(-ep.r,ep.r),ep.team,3,.3);
   if(ep.hp<=0)capturePlanet(ep,u.team);
