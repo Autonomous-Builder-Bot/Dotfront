@@ -1,0 +1,28 @@
+name: Playgama build
+on:
+  push:
+    branches:
+      - feature/playgama-monetization
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/playgama.test.cjs
+      - run: node scripts/build-playgama.mjs
+      - run: |
+          unzip -t dist/dotfront-playgama.zip
+          unzip -Z1 dist/dotfront-playgama.zip | grep -qx 'index.html'
+          unzip -Z1 dist/dotfront-playgama.zip | grep -qx 'playgama-bridge-config.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dotfront-playgama-upload
+          path: dist/dotfront-playgama.zip
+          if-no-files-found: error
+          retention-days: 14
