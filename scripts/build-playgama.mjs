@@ -10,16 +10,17 @@ function copy(from,to=from){const dest=path.join(out,to);fs.mkdirSync(path.dirna
 for(const f of ['app.js','app.css','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png'])copy(f);
 copy('playgama/boot.js','playgama-boot.js');
 copy('playgama/ads.js','playgama-ads.js');
+copy('playgama/audio.js','playgama-audio.js');
 copy('playgama/playgama-bridge-config.json','playgama-bridge-config.json');
 let html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 html=html.replace(/<meta http-equiv="Content-Security-Policy"[^>]*>/i,'')
   .replace(/<link rel="manifest"[^>]*>/i,'')
   .replace(/<script defer src="\.\/(?:ads|app|bootstrap)\.js\?v=\d+"><\/script>/g,'')
   .replace(/(\.\/app\.css)\?v=\d+/g,'$1')
-  .replace('</body>','<div id="playgamaLoading" aria-live="polite" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#e7f7ff;font:14px system-ui;pointer-events:none">Loading Dotfront…</div><script defer src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script><script defer src="./playgama-ads.js"></script><script defer src="./playgama-boot.js"></script></body>');
+  .replace('</body>','<div id="playgamaLoading" aria-live="polite" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#e7f7ff;font:14px system-ui;pointer-events:none">Loading Dotfront…</div><script defer src="https://bridge.playgama.com/v2/stable/playgama-bridge.js"></script><script defer src="./playgama-audio.js"></script><script defer src="./playgama-ads.js"></script><script defer src="./playgama-boot.js"></script></body>');
 if(!html.includes('playgama-boot.js')||html.includes('src="./app.js?v=')||html.includes('Content-Security-Policy'))throw Error('HTML substitution failed');
 fs.writeFileSync(path.join(out,'index.html'),html);
-const filenames=['index.html','app.css','app.js','playgama-boot.js','playgama-ads.js','playgama-bridge-config.json','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png'];
+const filenames=['index.html','app.css','app.js','playgama-boot.js','playgama-ads.js','playgama-bridge-config.json','playgama-audio.js','icons/icon-180.png','icons/icon-192.png','icons/icon-512.png'];
 function crc32(b){let c=0xffffffff;for(const v of b){c^=v;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}return(c^0xffffffff)>>>0}
 function zip(entries){
  const local=[],central=[];let offset=0;
