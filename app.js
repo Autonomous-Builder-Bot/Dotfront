@@ -5,15 +5,39 @@ const c=document.getElementById('game'),g=c.getContext('2d');const $=id=>documen
 circle:{speed:91,hp:32,armor:2,damage:8,range:24,period:.75,attackPeriod:.85,capture:1},
 square:{speed:60,hp:85,armor:5,damage:11,range:26,period:1.5,attackPeriod:.95,capture:1},
 triangle:{speed:116,hp:17,armor:0,damage:7,range:110,period:1.5,attackPeriod:1.05,capture:1,ranged:true},
-rectangle:{speed:39,hp:190,armor:10,damage:19,range:27,period:3,attackPeriod:1.2,capture:0}
-};const typeIcons={circle:'●',square:'■',triangle:'▲',rectangle:'▰'};let lasers=[];
+rectangle:{speed:39,hp:190,armor:10,damage:19,range:27,period:3,attackPeriod:1.2,capture:0},
+cavalry:{speed:156,hp:47,armor:1,damage:11,range:26,period:2.25,attackPeriod:1.05,capture:1}
+};const typeIcons={circle:'●',square:'■',triangle:'▲',rectangle:'▰',cavalry:'❯'};let lasers=[];
 // Data-driven campaign. Every group of 20 levels introduces a new tactical lesson.
 const CAMPAIGN_SIZE=200,ARC_NAMES=['First Contact','The Expansion','Fortress Systems','Laser Frontier','Heavy Industry','Siege Warfare','Hostile Territory','Split Command','Adaptive Enemies','The Core Worlds'];
 const MODS=[{id:'production1',branch:'Production',title:'Efficient Factories',desc:'All planets produce 8% faster',cost:1,req:null},{id:'production2',branch:'Production',title:'Assembly Lines',desc:'Production +12% (stacks)',cost:2,req:'production1'},{id:'production3',branch:'Production',title:'Stellar Foundries',desc:'Production +15% (stacks)',cost:3,req:'production2'},
 {id:'combat1',branch:'Combat',title:'Reinforced Hulls',desc:'Units spawn with +10% health',cost:1,req:null},{id:'combat2',branch:'Combat',title:'Reactive Armor',desc:'Units gain +1 armor',cost:2,req:'combat1'},{id:'combat3',branch:'Combat',title:'Focused Weapons',desc:'Units deal +12% damage',cost:3,req:'combat2'},
 {id:'expansion1',branch:'Tactics',title:'Twin Emitters',desc:'Triangles fire two laser shots per attack',cost:1,req:null},{id:'expansion2',branch:'Tactics',title:'Shield Wall',desc:'Select 3+ squares, then drag a defensive line',cost:2,req:'expansion1'},{id:'expansion3',branch:'Tactics',title:'Bulwark Doctrine',desc:'Shield walls gain 4 additional armor',cost:3,req:'expansion2'},
 {id:'command1',branch:'Command',title:'Fast Engines',desc:'Your units move 8% faster',cost:1,req:null},{id:'command2',branch:'Command',title:'Capture Drills',desc:'Capturing planets deals 12% more damage',cost:2,req:'command1'},{id:'command3',branch:'Command',title:'Advanced Logistics',desc:'Allied planets regenerate 50% faster',cost:3,req:'command2'}];
-const SAVE_KEY='dotfront_campaign_v1';const BACKUP_KEY='dotfront_campaign_backup_v1';const LEGACY_SAVE_KEY='starforge_campaign_v1';const LEGACY_BACKUP_KEY='starforge_campaign_backup_v1';function loadProgress(){try{let raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(BACKUP_KEY)||localStorage.getItem(LEGACY_SAVE_KEY)||localStorage.getItem(LEGACY_BACKUP_KEY)||'{}';if(raw.length>100000)throw Error('Save too large');let o=JSON.parse(raw);return{unlocked:clamp(Math.floor(o.unlocked||1),1,CAMPAIGN_SIZE),completed:Array.isArray(o.completed)?o.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE):[],owned:Array.isArray(o.owned)?o.owned.filter(v=>MODS.some(m=>m.id===v)):[]}}catch(e){return{unlocked:1,completed:[],owned:[]}}}let progress=loadProgress(),currentLevel=progress.unlocked,menuTab='play',menuFromPause=false;
+// All old upgrades retain their existing IDs and costs, preserving save compatibility.
+MODS.push(
+ {id:'overclock',branch:'Production',title:'Overclock Reactors',desc:'Activate 12 seconds of double production on a planet; 50-second cooldown.',cost:4,req:'production2',minLevel:15,kind:'ACTIVE'},
+ {id:'factorynetwork',branch:'Production',title:'Factory Network',desc:'Nearby friendly planets increase each other’s production, up to 18%.',cost:6,req:'production3',minLevel:35,kind:'ECONOMY'},
+ {id:'massfabrication',branch:'Production',title:'Mass Fabrication',desc:'Every seventh circle produced creates a bonus circle.',cost:8,req:'factorynetwork',minLevel:55,kind:'SPECIAL'},
+ {id:'shieldfront',branch:'Combat',title:'Forward Shields',desc:'Squares resist frontal attacks more effectively.',cost:4,req:'combat2',minLevel:18,kind:'TACTIC'},
+ {id:'fortress',branch:'Combat',title:'Fortress Doctrine',desc:'Fortify a planet against capture damage for 15 seconds; 55-second cooldown.',cost:5,req:'combat2',minLevel:25,kind:'ACTIVE'},
+ {id:'shockarmor',branch:'Combat',title:'Shock Armor',desc:'Rectangle strikes damage closely packed enemies.',cost:7,req:'combat3',minLevel:45,kind:'SPECIAL'},
+ {id:'cavalrycharges',branch:'Tactics',title:'Lancer Training',desc:'Cavalry charge damage increases after a long approach.',cost:4,req:'expansion1',minLevel:20,kind:'TACTIC'},
+ {id:'flankdrills',branch:'Tactics',title:'Flanking Drills',desc:'Cavalry are deadlier when striking enemies from behind.',cost:5,req:'cavalrycharges',minLevel:32,kind:'TACTIC'},
+ {id:'combinedarms',branch:'Tactics',title:'Combined Arms',desc:'Cavalry fighting near allied squares gain attack power.',cost:6,req:'flankdrills',minLevel:55,kind:'SPECIAL'},
+ {id:'supplylines',branch:'Command',title:'Supply Lines',desc:'Your units slowly recover health near friendly planets.',cost:3,req:'command1',minLevel:15,kind:'SUPPORT'},
+ {id:'warplogistics',branch:'Command',title:'Warp Logistics',desc:'Every fourth rally-spawned unit jumps forward on its supply route.',cost:6,req:'command2',minLevel:35,kind:'SPECIAL'},
+ {id:'rapidredeploy',branch:'Command',title:'Rapid Redeployment',desc:'Warp every second rally-spawned unit farther forward.',cost:8,req:'warplogistics',minLevel:70,kind:'SPECIAL'}
+);
+const MASTERY=[
+ {id:'productionmastery',branch:'Production',title:'Industrial Mastery',desc:'Another +3% production speed per rank.',costs:[2,4,6,8,10],levels:[15,30,55,85,125],req:'production2',kind:'MASTERY'},
+ {id:'combatmastery',branch:'Combat',title:'Warrior Mastery',desc:'Another +3% damage per rank.',costs:[2,4,6,8,10],levels:[20,40,70,100,140],req:'combat2',kind:'MASTERY'},
+ {id:'tacticsmastery',branch:'Tactics',title:'Conquest Mastery',desc:'Another +5% capture damage per rank.',costs:[2,4,6,8,10],levels:[25,50,75,110,150],req:'expansion2',kind:'MASTERY'},
+ {id:'commandmastery',branch:'Command',title:'Mobility Mastery',desc:'Another +4% friendly speed per rank.',costs:[2,4,6,8,10],levels:[20,45,75,110,150],req:'command2',kind:'MASTERY'}
+];
+const rankOf=id=>Math.max(0,Math.min(5,Math.floor(progress.ranks?.[id]||0)));
+const cavalryUnlocked=()=>progress.unlocked>=20;
+const SAVE_KEY='dotfront_campaign_v1';const BACKUP_KEY='dotfront_campaign_backup_v1';const LEGACY_SAVE_KEY='starforge_campaign_v1';const LEGACY_BACKUP_KEY='starforge_campaign_backup_v1';function loadProgress(){try{let raw=localStorage.getItem(SAVE_KEY)||localStorage.getItem(BACKUP_KEY)||localStorage.getItem(LEGACY_SAVE_KEY)||localStorage.getItem(LEGACY_BACKUP_KEY)||'{}';if(raw.length>100000)throw Error('Save too large');let o=JSON.parse(raw);return{unlocked:clamp(Math.floor(o.unlocked||1),1,CAMPAIGN_SIZE),completed:Array.isArray(o.completed)?o.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE):[],owned:Array.isArray(o.owned)?[...new Set(o.owned.filter(v=>MODS.some(m=>m.id===v)))]:[],ranks:Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(o.ranks?.[m.id])||0)))]))}}catch(e){return{unlocked:1,completed:[],owned:[],ranks:{}}}}let progress=loadProgress(),currentLevel=progress.unlocked,menuTab='play',menuFromPause=false;
 
 // Time control changes the pacing of both armies equally; it does not alter AI difficulty.
 const GAME_SPEEDS=[1,2,4];let speedIndex=0;
@@ -155,9 +179,20 @@ $('tutorialExit').onclick=()=>tutorialFinish();
 
 function saveProgress(){try{const encoded=JSON.stringify(progress);const old=localStorage.getItem(SAVE_KEY);if(old)localStorage.setItem(BACKUP_KEY,old);localStorage.setItem(SAVE_KEY,encoded)}catch(e){console.warn('Dotfront: unable to persist progress');}}
 function exportProgress(){const payload={format:'dotfront-save',version:1,exported:new Date().toISOString(),progress};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='dotfront-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-function importProgress(file){if(!file||file.size>100000){toast('Save must be a small Dotfront JSON file.');return}file.text().then(s=>{let data=JSON.parse(s);if(!['dotfront-save','starforge-save'].includes(data.format)||data.version!==1||typeof data.progress!=='object')throw Error('Invalid save');let p=data.progress;const completed=Array.isArray(p.completed)?[...new Set(p.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE))]:[];const allowed=new Set(MODS.map(m=>m.id));const owned=Array.isArray(p.owned)?[...new Set(p.owned.filter(v=>typeof v==='string'&&allowed.has(v)))]:[];const cost=owned.reduce((a,id)=>a+(MODS.find(m=>m.id===id)?.cost||0),0);if(cost>completed.length)throw Error('Invalid upgrade balance');for(const id of owned){const req=MODS.find(m=>m.id===id)?.req;if(req&&!owned.includes(req))throw Error('Invalid upgrade tree')}const unlocked=Math.min(CAMPAIGN_SIZE,Math.max(1,...completed.map(n=>n+1)));progress={completed,unlocked,owned};saveProgress();currentLevel=unlocked;menuFromPause=false;showMenu('play');toast('Save imported successfully.');}).catch(()=>toast('Could not import save. Check file format.'))}
+function importProgress(file){if(!file||file.size>100000){toast('Save must be a small Dotfront JSON file.');return}file.text().then(s=>{let data=JSON.parse(s);if(!['dotfront-save','starforge-save'].includes(data.format)||data.version!==1||typeof data.progress!=='object')throw Error('Invalid save');let p=data.progress;const completed=Array.isArray(p.completed)?[...new Set(p.completed.filter(v=>Number.isInteger(v)&&v>=1&&v<=CAMPAIGN_SIZE))]:[];const allowed=new Set(MODS.map(m=>m.id));const owned=Array.isArray(p.owned)?[...new Set(p.owned.filter(v=>typeof v==='string'&&allowed.has(v)))]:[];const ranks=Object.fromEntries(MASTERY.map(m=>[m.id,Math.max(0,Math.min(m.costs.length,Math.floor(Number(p.ranks?.[m.id])||0)))]));
+ const rankCost=MASTERY.reduce((n,m)=>n+m.costs.slice(0,ranks[m.id]).reduce((a,b)=>a+b,0),0);
+ const cost=owned.reduce((a,id)=>a+(MODS.find(m=>m.id===id)?.cost||0),0)+rankCost;
+ if(cost>completed.length)throw Error('Invalid upgrade balance');
+ for(const id of owned){const req=MODS.find(m=>m.id===id)?.req;if(req&&!owned.includes(req))throw Error('Invalid upgrade tree')}
+ for(const m of MASTERY)if(ranks[m.id]&&m.req&&!owned.includes(m.req))throw Error('Invalid mastery tree');
+ const unlocked=Math.min(CAMPAIGN_SIZE,Math.max(1,...completed.map(n=>n+1)));progress={completed,unlocked,owned,ranks};saveProgress();currentLevel=unlocked;menuFromPause=false;showMenu('play');toast('Save imported successfully.');}).catch(()=>toast('Could not import save. Check file format.'))}
 
-function hasMod(id){return progress.owned.includes(id)}function modValue(){return Math.max(0,progress.completed.length-progress.owned.reduce((a,id)=>a+(MODS.find(m=>m.id===id)?.cost||0),0))}
+function hasMod(id){return progress.owned.includes(id)}
+function modValue(){
+ const spent=progress.owned.reduce((a,id)=>a+(MODS.find(m=>m.id===id)?.cost||0),0);
+ const masterySpent=MASTERY.reduce((total,m)=>total+m.costs.slice(0,rankOf(m.id)).reduce((sum,cost)=>sum+cost,0),0);
+ return Math.max(0,progress.completed.length-spent-masterySpent);
+}
 function colonyCost(){return hasMod('expansion2')?20:hasMod('expansion1')?23:25}
 function seeded(seed){let v=seed>>>0;return()=>{v=(Math.imul(1664525,v)+1013904223)>>>0;return v/4294967296}}
 function levelDesign(n){let arc=Math.floor((n-1)/20),stage=(n-1)%20,rng=seeded(n*7027+91),template=['duel','frontier','split','rush','fortress','flank','relay','siege','mixed','boss'][stage%10];if(arc===0&&n<=3)template=['duel','frontier','relay'][n-1];
@@ -206,7 +241,21 @@ levelDesign=function(n){
  return {...base,title:ARC_NAMES[base.arc]+' · '+scenarios[part],hint:base.hint+' Enemy doctrine: '+base.aiStyle+'.'};
 };
 
-function levelBonuses(){const d=levelDesign(currentLevel);return{prod:1+(hasMod('production1')?.08:0)+(hasMod('production2')?.12:0)+(hasMod('production3')?.15:0),speed:1+(hasMod('command1')?.08:0),hp:1+(hasMod('combat1')?.10:0),armor:hasMod('combat2')?1:0,damage:hasMod('combat3')?1.12:1,capture:hasMod('command2')?1.12:1,regen:hasMod('command3')?1.5:1,aiScale:1+Math.min(.6,(currentLevel-1)/400),design:d}}
+let bonusKey='',cachedBonuses=null;
+function levelBonuses(){
+ const key=currentLevel+'|'+progress.owned.join(',')+'|'+MASTERY.map(m=>rankOf(m.id)).join(',');
+ if(key===bonusKey&&cachedBonuses)return cachedBonuses;
+ const d=levelDesign(currentLevel);
+ bonusKey=key;cachedBonuses={
+  prod:1+(hasMod('production1')?.08:0)+(hasMod('production2')?.12:0)+(hasMod('production3')?.15:0)+rankOf('productionmastery')*.03,
+  speed:1+(hasMod('command1')?.08:0)+rankOf('commandmastery')*.04,
+  hp:1+(hasMod('combat1')?.10:0),armor:hasMod('combat2')?1:0,
+  damage:(hasMod('combat3')?1.12:1)*(1+rankOf('combatmastery')*.03),
+  capture:(hasMod('command2')?1.12:1)*(1+rankOf('tacticsmastery')*.05),
+  regen:hasMod('command3')?1.5:1,aiScale:1+Math.min(.6,(currentLevel-1)/400),design:d
+ };
+ return cachedBonuses;
+}
 function buyMod(id){let m=MODS.find(m=>m.id===id);if(!m||hasMod(id)||m.req&&!hasMod(m.req)||modValue()<m.cost)return;progress.owned.push(id);saveProgress();showMenu('upgrades')}
 function showMenu(tab='play'){menuTab=tab;paused=true;$('pause').textContent='▶ Resume';$('overlay').classList.remove('hidden');tutorialRender();let d=levelDesign(currentLevel),nav=`<div class="modalNav"><button class="button ${tab==='play'?'active':''}" data-tab="play">Campaign</button><button class="button ${tab==='upgrades'?'active':''}" data-tab="upgrades">Upgrade tree</button><button class="button ${tab==='levels'?'active':''}" data-tab="levels">Levels</button></div>`,body='';
 if(tab==='upgrades'){body=`<p>Earn 1 upgrade point the first time you beat each level. <span id="upgradePoints">${modValue()} points available</span>.</p><div id="upgradeTree">${['Production','Combat','Tactics','Command'].map(branch=>`<div class="branch"><strong>${branch.toUpperCase()}</strong>${MODS.filter(m=>m.branch===branch).map(m=>{let owned=hasMod(m.id),locked=m.req&&!hasMod(m.req);return `<button class="button node ${owned?'owned':locked?'locked':''}" data-buy="${m.id}" ${owned||locked||modValue()<m.cost?'disabled':''}>${owned?'✓':locked?'🔒':'+'} ${m.title} · ${m.cost} pt${m.cost===1?'':'s'}<small>${m.desc}${locked?' · Requires '+MODS.find(o=>o.id===m.req).title:''}</small></button>`}).join('')}</div>`).join('')}</div><p class="subtle">All purchased upgrades apply to every future battle and replayed level.</p>`}
