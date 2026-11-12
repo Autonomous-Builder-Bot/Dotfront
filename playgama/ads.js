@@ -60,8 +60,8 @@
       }, 15000);
       const result = ad.showInterstitial('dotfront_level_' + level);
       if (result && typeof result.catch === 'function') result.catch(finish);
-      // Some SDKs return a state immediately without firing a new event.
-      if (ad.interstitialState === 'failed' || ad.interstitialState === 'closed') finish();
+      // Do not interpret a stale 'closed' state from a previous ad as closure of this request.
+      // We rely on a fresh state change or the no-open timeout.
     } catch (error) {
       console.warn('Interstitial unavailable; continuing Dotfront.', error);
       finish();
