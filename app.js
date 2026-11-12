@@ -1,7 +1,7 @@
 
 
 (()=>{'use strict';
-const c=document.getElementById('game'),g=c.getContext('2d');const $=id=>document.getElementById(id);const W=1400,H=850;let width=0,height=0,dpr=1,scale=1,ox=0,oy=0;let planets=[],units=[],particles=[],starBackground=null,edges=[],selected=new Set(),selectedPlanet=null,wallPlacement=false,paused=true,finished=false,elapsed=0,lastTime=0,aiTimer=0,spawnTimer=0,toastTimer=0,tipTimer=0,mouse={x:0,y:0},drag=null,lastClick={t:0,x:-200,y:-200},nextId=1,difficulty='normal',aiConfig={easy:{delay:18,interval:4.5,speed:.82,production:.86},normal:{delay:6,interval:2.5,speed:1,production:1},hard:{delay:0,interval:1.35,speed:1.2,production:1.22}};const teams=['#7ee6ff','#ff718f','#d4d6eb'],color=t=>teams[t+0]||teams[2];const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const specs={
+const c=document.getElementById('game'),g=c.getContext('2d');const $=id=>document.getElementById(id);const BASE_W=1400,BASE_H=850;let W=BASE_W,H=BASE_H,width=0,height=0,dpr=1,scale=1,fitScale=1,ox=0,oy=0,zoomFactor=1,cameraX=W/2,cameraY=H/2;let planets=[],units=[],particles=[],starBackground=null,edges=[],selected=new Set(),selectedPlanet=null,wallPlacement=false,paused=true,finished=false,elapsed=0,lastTime=0,aiTimer=0,spawnTimer=0,toastTimer=0,tipTimer=0,mouse={x:0,y:0},drag=null,lastClick={t:0,x:-200,y:-200},nextId=1,difficulty='normal',aiConfig={easy:{delay:18,interval:4.5,speed:.82,production:.86},normal:{delay:6,interval:2.5,speed:1,production:1},hard:{delay:0,interval:1.35,speed:1.2,production:1.22}};const teams=['#7ee6ff','#ff718f','#d4d6eb'],color=t=>teams[t+0]||teams[2];const rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const specs={
 circle:{speed:91,hp:32,armor:2,damage:8,range:24,period:.75,attackPeriod:.85,capture:1},
 square:{speed:60,hp:85,armor:5,damage:11,range:26,period:1.5,attackPeriod:.95,capture:1},
 triangle:{speed:116,hp:17,armor:0,damage:7,range:110,period:1.5,attackPeriod:1.05,capture:1,ranged:true},
@@ -9,7 +9,7 @@ rectangle:{speed:39,hp:190,armor:10,damage:19,range:27,period:3,attackPeriod:1.2
 cavalry:{speed:156,hp:47,armor:1,damage:11,range:26,period:2.25,attackPeriod:1.05,capture:1}
 };const typeIcons={circle:'●',square:'■',triangle:'▲',rectangle:'▰',cavalry:'❯'};let lasers=[];
 // Data-driven campaign. Every group of 20 levels introduces a new tactical lesson.
-const CAMPAIGN_SIZE=200,ARC_NAMES=['First Contact','The Expansion','Fortress Systems','Laser Frontier','Heavy Industry','Siege Warfare','Hostile Territory','Split Command','Adaptive Enemies','The Core Worlds'];
+const CAMPAIGN_SIZE=250,ARC_NAMES=['First Contact','The Expansion','Fortress Systems','Laser Frontier','Heavy Industry','Siege Warfare','Hostile Territory','Split Command','Adaptive Enemies','The Core Worlds','Outer Systems','The Shattered Frontier','The Final Campaign'];
 const MODS=[{id:'production1',branch:'Production',title:'Efficient Factories',desc:'All planets produce 8% faster',cost:1,req:null},{id:'production2',branch:'Production',title:'Assembly Lines',desc:'Production +12% (stacks)',cost:2,req:'production1'},{id:'production3',branch:'Production',title:'Stellar Foundries',desc:'Production +15% (stacks)',cost:3,req:'production2'},
 {id:'combat1',branch:'Combat',title:'Reinforced Hulls',desc:'Units spawn with +10% health',cost:1,req:null},{id:'combat2',branch:'Combat',title:'Reactive Armor',desc:'Units gain +1 armor',cost:2,req:'combat1'},{id:'combat3',branch:'Combat',title:'Focused Weapons',desc:'Units deal +12% damage',cost:3,req:'combat2'},
 {id:'expansion1',branch:'Tactics',title:'Twin Emitters',desc:'Triangles fire two laser shots per attack',cost:1,req:null},{id:'expansion2',branch:'Tactics',title:'Shield Wall',desc:'Select 3+ squares, then drag a defensive line',cost:2,req:'expansion1'},{id:'expansion3',branch:'Tactics',title:'Bulwark Doctrine',desc:'Shield walls gain 4 additional armor',cost:3,req:'expansion2'},
@@ -340,14 +340,64 @@ const OPENING_MISSIONS=[
  {name:'The Pincer',style:'swarm',hint:'Threaten both sides simultaneously so the enemy cannot reinforce everything.',start:52,foe:50,sites:[[155,425,0,38,'HOME'],[1240,425,1,38,'HOSTILE'],[330,170,0,27,'NORTH BASE'],[330,680,0,27,'SOUTH BASE'],[690,170,2,29,'RIDGE'],[690,680,2,29,'VALLEY'],[970,425,1,27,'GUARD']]},
  {name:'Gatekeeper',style:'siege',hint:'Chapter final: preserve your economy, dismantle the forward forts, then capture the core.',start:60,foe:60,sites:[[155,425,0,38,'HOME'],[1240,425,1,38,'HOSTILE'],[310,670,0,27,'RESERVE'],[1000,230,1,29,'NORTH FORT'],[1000,625,1,29,'SOUTH FORT'],[440,200,2,28,'NORTH PATH'],[440,650,2,28,'SOUTH PATH'],[685,425,2,32,'CENTER'],[770,195,2,26,'RIDGE'],[770,655,2,26,'VALLEY']]}
 ];
+
+/* Mathematical progression for missions 21–250. No collision walls or terrain.
+   Invariants: fixed starting HQs, count budget, minimum planet separation,
+   and monotonic world extents and baseline forces.
+   These rules prevent obvious invalid layouts; they cannot prove a map is fun. */
+function mathMissionDesign(n,base){
+ const t=clamp((n-20)/(CAMPAIGN_SIZE-20),0,1);
+ const worldWidth=Math.round(BASE_W*(1+.55*t)),worldHeight=Math.round(BASE_H*(1+.45*t));
+ const sx=worldWidth/BASE_W,sy=worldHeight/BASE_H;
+ const targetCount=10+Math.floor(10*t);
+ const rng=seeded((Math.imul(n,776531)+0x24BA7F)>>>0);
+ const setups=base.setups.map(([x,y,team,r,name])=>{
+  const wiggle=team===2?35+35*t:0;
+  return [Math.round(clamp(x*sx+(rng()-.5)*wiggle,78,worldWidth-78)),
+          Math.round(clamp(y*sy+(rng()-.5)*wiggle,88,worldHeight-88)),team,r,name];
+ });
+ // Trim surplus neutral positions, retaining starting friendly/enemy planets.
+ while(setups.length>targetCount){
+  const idx=setups.findLastIndex(p=>p[2]===2);
+  if(idx===-1)break;
+  setups.splice(idx,1);
+ }
+ const minSpacing=125,maxBridge=390;
+ for(let k=0;setups.length<targetCount&&k<targetCount*220;k++){
+  const teamSide=(setups.length%2===0)?0:1;
+  const sideAnchors=setups.filter(p=>teamSide===0?p[0]<worldWidth/2:p[0]>=worldWidth/2);
+  const anchors=sideAnchors.length?sideAnchors:setups;
+  const anchor=anchors[Math.floor(rng()*anchors.length)];
+  const angle=rng()*Math.PI*2;
+  const radius=165+rng()*200;
+  const x=Math.round(clamp(anchor[0]+Math.cos(angle)*radius,90,worldWidth-90));
+  const y=Math.round(clamp(anchor[1]+Math.sin(angle)*radius,90,worldHeight-90));
+  const nearest=Math.min(...setups.map(p=>Math.hypot(p[0]-x,p[1]-y)));
+  if(nearest<minSpacing||nearest>maxBridge)continue;
+  setups.push([x,y,2,25+Math.floor(rng()*8),'SECTOR '+String(setups.length-1).padStart(2,'0')]);
+ }
+ // The deterministic fallback extends from an existing planet; no rerolling
+ // player or enemy bases and no reduction in the target planet count.
+ if(setups.length<targetCount){
+  for(let j=0;setups.length<targetCount&&j<2000;j++){
+   const x=90+(j*211+Math.floor(n*31))%(worldWidth-180);
+   const y=90+(j*173+Math.floor(n*23))%(worldHeight-180);
+   const nearest=Math.min(...setups.map(p=>Math.hypot(p[0]-x,p[1]-y)));
+   if(nearest>=minSpacing&&nearest<=maxBridge)setups.push([x,y,2,26,'SECTOR '+String(setups.length-1).padStart(2,'0')]);
+  }
+ }
+ const starter=Math.round(24+28*t);
+ const enemyStarter=Math.round(starter*(.72+.35*t))+(base.template==='boss'?Math.round(3+6*t):0);
+ return {...base,worldWidth,worldHeight,setups,starter,enemyStarter,
+  title:ARC_NAMES[base.arc]+' · '+base.template.charAt(0).toUpperCase()+base.template.slice(1)+' '+String(n).padStart(3,'0'),
+  hint:base.hint+' Secure forward production worlds to shorten reinforcement travel.',
+  mathematical:true};
+}
 const proceduralLevelDesign=levelDesign;
 levelDesign=function(n){
  const base=proceduralLevelDesign(n);
- if(n<=OPENING_MISSIONS.length){const o=OPENING_MISSIONS[n-1];return {...base,setups:o.sites.map(s=>s.slice()),starter:o.start,enemyStarter:o.foe,aiStyle:o.style,title:'First Contact · '+o.name,hint:o.hint,handcrafted:true};}
- // Campaign remains deterministic, with rotating tactical pressures; later chapters need playtesting.
- const scenarios=['Contested center','Fast expansion','Defensive stand','Flanking operation','Ranged engagement','Armored assault','Split economy','Enemy foothold','Counteroffensive','Chapter showdown'];
- const part=(n-21)%10;
- return {...base,title:ARC_NAMES[base.arc]+' · '+scenarios[part],hint:base.hint+' Enemy doctrine: '+base.aiStyle+'.'};
+ if(n<=OPENING_MISSIONS.length){const o=OPENING_MISSIONS[n-1];return {...base,worldWidth:BASE_W,worldHeight:BASE_H,setups:o.sites.map(s=>s.slice()),starter:o.start,enemyStarter:o.foe,aiStyle:o.style,title:'First Contact · '+o.name,hint:o.hint,handcrafted:true};}
+ return mathMissionDesign(n,base);
 };
 
 let bonusKey='',cachedBonuses=null;
@@ -455,7 +505,33 @@ $('playLevel').onclick=()=>{difficulty=$('difficulty')?.value||difficulty;startL
 function startLevelAfterAdBreak(){if(window.DotfrontAds)window.DotfrontAds.beforeNextBattle(startLevel);else startLevel()}
 function startLevel(){if(tutorialActive){tutorialActive=false;tutorialScene='';tutorialReadPause=false;$('tutorial').hidden=true}if(currentLevel>progress.unlocked)currentLevel=progress.unlocked;$('overlay').classList.add('hidden');$('menu').style.display='block';init();if(!tutorialActive)tutorialStart();else tutorialRender()}
 
-function resize(){width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);c.width=Math.round(width*dpr);c.height=Math.round(height*dpr);scale=Math.min((width-24)/W,(height-42)/(H*.78));if(tutorialActive)scale=Math.min(1.25,scale*1.65);ox=(width-W*scale)/2;oy=(height-H*.78*scale)/2+15;if(tutorialActive&&width>height&&height<500)ox-=width*.14;g.setTransform(dpr,0,0,dpr,0,0);rebuildStarBackground()}
+
+function refreshCamera(){
+ scale=fitScale*zoomFactor;
+ if(zoomFactor<=1.001){cameraX=W/2;cameraY=H/2}
+ cameraX=clamp(cameraX,0,W);cameraY=clamp(cameraY,0,H);
+ ox=width/2-(cameraX+(cameraY-H/2)*.075)*scale;
+ oy=height/2-cameraY*.78*scale+15;
+ if(tutorialActive&&width>height&&height<500)ox-=width*.14;
+ const zin=$('zoomIn'),zout=$('zoomOut');
+ if(zin)zin.disabled=zoomFactor>=2.79;
+ if(zout)zout.disabled=zoomFactor<=1.001;
+}
+function zoomBy(factor){
+ if(zoomFactor<=1.001&&factor>1){
+  const focus=selectedPlanet||([...selected].length?{x:[...selected].reduce((a,u)=>a+u.x,0)/selected.size,y:[...selected].reduce((a,u)=>a+u.y,0)/selected.size}:null);
+  if(focus){cameraX=focus.x;cameraY=focus.y}
+ }
+ zoomFactor=clamp(Math.round(zoomFactor*factor*1000)/1000,1,2.8);
+ refreshCamera();
+}
+function resize(){
+ width=innerWidth;height=innerHeight;dpr=Math.min(2,devicePixelRatio||1);
+ c.width=Math.round(width*dpr);c.height=Math.round(height*dpr);
+ fitScale=Math.min((width-24)/W,(height-42)/(H*.78));
+ if(tutorialActive)fitScale=Math.min(1.25,fitScale*1.65);
+ refreshCamera();g.setTransform(dpr,0,0,dpr,0,0);rebuildStarBackground()
+}
 
 function rebuildStarBackground(){
  const sky=document.createElement('canvas'),density=Math.min(dpr,1.5);
@@ -488,7 +564,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-const design=levelDesign(currentLevel),setups=design.setups;for(const [x,y,t,r,name] of setups)addPlanet(x,y,t,r,name,false);for(let i=0;i<design.starter;i++)spawnUnit(planets[0],i%7===0?'square':'circle',true);if(hasMod('doc_swarm_wave'))for(let i=0;i<8;i++)spawnUnit(planets[0],'circle',true);for(let i=0;i<design.enemyStarter;i++)spawnUnit(planets[1],i%7===0?'square':'circle',true);for(const p of planets){if(p.team===0&&p!==planets[0])for(let i=0;i<7;i++)spawnUnit(p,'circle',true);if(p.team===1&&p!==planets[1])for(let i=0;i<5;i++)spawnUnit(p,'circle',true)}$('modeMove').classList.add('active');updateHud();toast('Select your units by dragging a box, then click a destination.');}
+const design=levelDesign(currentLevel),setups=design.setups;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;zoomFactor=1;cameraX=W/2;cameraY=H/2;resize();for(const [x,y,t,r,name] of setups)addPlanet(x,y,t,r,name,false);for(let i=0;i<design.starter;i++)spawnUnit(planets[0],i%7===0?'square':'circle',true);if(hasMod('doc_swarm_wave'))for(let i=0;i<8;i++)spawnUnit(planets[0],'circle',true);for(let i=0;i<design.enemyStarter;i++)spawnUnit(planets[1],i%7===0?'square':'circle',true);for(const p of planets){if(p.team===0&&p!==planets[0])for(let i=0;i<7;i++)spawnUnit(p,'circle',true);if(p.team===1&&p!==planets[1])for(let i=0;i<5;i++)spawnUnit(p,'circle',true)}$('modeMove').classList.add('active');updateHud();toast('Select your units by dragging a box, then click a destination.');}
 function addPlanet(x,y,team,r,name,constructed=true){const p={id:nextId++,x,y,team,r,name:name||('STAR '+Math.floor(rand(100,999))),hp:team===2?180:230,maxHp:team===2?180:230,type:'circle',level:1,spawn:rand(0,.5),rally:null,flash:0,pulse:rand(0,7),built:constructed?0:1,shield:0,overclock:0,overclockCooldown:0,fortify:0,fortifyCooldown:0,warpCount:0,massCount:0,doctrineCount:0};planets.push(p);burst(x,y,team,19,2);return p}
 function spawnUnit(p,type,instant=false){if(units.length>=1100)return null;if(units.length>800&&units.reduce((count,u)=>count+(!u.dead&&u.team===p.team),0)>=700)return null;let a=rand(0,Math.PI*2),r=rand(p.r+10,p.r+52);let u={id:nextId++,x:clamp(p.x+Math.cos(a)*r,12,W-12),y:clamp(p.y+Math.sin(a)*r,12,H-12),team:p.team,type,hp:specs[type].hp*(p.team===0?levelBonuses().hp:1)*doctrineHpMultiplier(type,p.team),maxHp:specs[type].hp*(p.team===0?levelBonuses().hp:1)*doctrineHpMultiplier(type,p.team),vx:0,vy:0,z:rand(7,15),bob:rand(0,6.28),cooldown:rand(0,.8),angle:a,target:null,moveTo:null,upgradeTarget:null,seed:rand(-1,1),shieldWall:null,chargeDistance:0,pursuitUntil:0,dead:false};units.push(u);if(p.rally){
  u.moveTo={x:p.rally.x+rand(-15,15),y:p.rally.y+rand(-15,15)};
@@ -707,6 +783,9 @@ function local(e){let r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.
 $('start').onclick=()=>{difficulty=$('difficulty').value;startLevel()};
 $('restart').onclick=()=>startLevel();
 $('speed').onclick=()=>{setGameSpeed(speedIndex+1);toast('Battle speed: '+GAME_SPEEDS[speedIndex]+'× (both sides).')};
+$('zoomIn').onclick=()=>zoomBy(1.25);
+$('zoomOut').onclick=()=>zoomBy(1/1.25);
+c.addEventListener('wheel',e=>{if(!$('overlay').classList.contains('hidden'))return;e.preventDefault();zoomBy(e.deltaY<0?1.25:1/1.25)},{passive:false});
 setGameSpeed(speedIndex);
 $('menu').onclick=()=>{menuFromPause=true;showMenu('play')};
 $('pause').onclick=()=>{if(finished)return;paused=!paused;$('pause').textContent=paused?'▶ Resume':'Ⅱ Pause';toast(paused?'Paused — selection, production and orders still work':'Battle resumed')};$('modeMove').onclick=()=>{wallPlacement=false;selectedPlanet=null;updateHud()};$('shieldWall').onclick=()=>{if(!hasMod('expansion2'))return;const squares=[...selected].filter(u=>!u.dead&&u.team===0&&u.type==='square');if(squares.length<3)return;wallPlacement=!wallPlacement;toast(wallPlacement?'Drag a line to position the shield wall.':'Shield wall placement canceled.');updateHud()};$('selectAll').onclick=()=>{selectedPlanet=null;selected=new Set(units.filter(u=>u.team===0));wallPlacement=false;updateHud();tutorialAction('select',{count:selected.size,gesture:'button'})};for(const b of document.querySelectorAll('[data-type]'))b.onclick=()=>{if(selectedPlanet){if(b.dataset.type==='cavalry'&&!cavalryUnlocked())return;selectedPlanet.type=b.dataset.type;selectedPlanet.spawn=0;toast(selectedPlanet.name+' now produces '+b.dataset.type+' units.');updateHud();tutorialAction('production')}};$('overclock').onclick=()=>{const p=selectedPlanet;if(!p||!hasMod('overclock')||p.overclock>0||p.overclockCooldown>0)return;p.overclock=12;p.overclockCooldown=50;burst(p.x,p.y,0,35,1.5);toast(p.name+' overclocked for 12 seconds!');updateHud()};
