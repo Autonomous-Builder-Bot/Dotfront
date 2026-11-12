@@ -403,8 +403,8 @@ function mathMissionDesign(n,base){
    if(nearest>=minSpacing&&nearest<=maxBridge)setups.push([x,y,2,26,'SECTOR '+String(setups.length-1).padStart(2,'0')]);
   }
  }
- const starter=Math.round(24+28*t);
- const enemyStarter=Math.round(starter*(.72+.35*t))+(base.template==='boss'?Math.round(3+6*t):0);
+ const starter=Math.round(44+24*t);
+ const enemyStarter=Math.round(starter*(.92+.30*t))+(base.template==='boss'?Math.round(3+6*t):0);
  return {...base,worldWidth,worldHeight,setups,starter,enemyStarter,
   title:ARC_NAMES[base.arc]+' · '+base.template.charAt(0).toUpperCase()+base.template.slice(1)+' '+String(n).padStart(3,'0'),
   hint:base.hint+' Secure forward production worlds to shorten reinforcement travel.',
