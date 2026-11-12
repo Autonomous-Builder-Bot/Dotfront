@@ -70,8 +70,16 @@
       const event = (bridge.EVENT_NAME && bridge.EVENT_NAME.PAUSE_STATE_CHANGED) || 'pause_state_changed';
       bridge.platform.on(event, value => {
         hostPaused = Boolean(value);
+        window.DotfrontAudio?.setHostPaused(hostPaused);
         if (hostPaused) updatePlaying(false);
       });
+    }
+    if (bridge.platform) {
+      window.DotfrontAudio?.setPlatformEnabled(bridge.platform.isAudioEnabled !== false);
+      if (typeof bridge.platform.on === 'function') {
+        const event = (bridge.EVENT_NAME && bridge.EVENT_NAME.AUDIO_STATE_CHANGED) || 'audio_state_changed';
+        bridge.platform.on(event, value => window.DotfrontAudio?.setPlatformEnabled(value));
+      }
     }
     if (bridge.storage && typeof bridge.storage.get === 'function') {
       const results = await Promise.allSettled([
