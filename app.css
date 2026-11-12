@@ -148,3 +148,68 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
  #tempoControls{position:static}
  #tempoControls .button{min-height:36px}
 }
+
+
+/* War Academy: a milestone-gated technology tree with clear tactical payoffs. */
+#modal.techMode{width:min(96vw,980px);max-height:94dvh;text-align:left}
+#modal.techMode>h2{text-align:center;letter-spacing:2px}
+#modal.techMode .modalNav{justify-content:center}
+#modal.techMode{touch-action:pan-y}
+.techHero{border:1px solid #72c8e487;border-radius:16px;background:linear-gradient(120deg,#122840,#0a1a31);padding:14px 16px;margin:12px 0 15px}
+.techHeroStats{display:flex;justify-content:space-between;gap:16px;align-items:center}
+.techHeroStats>div{display:flex;align-items:baseline;gap:10px}
+.techHeroStats small{font-size:9px;color:#9fbbd7;font-weight:700;letter-spacing:1px}
+.techPoints{font-size:32px;color:#ffe39b;font-weight:900;line-height:1}
+.techLevel{font-size:25px;color:#8fe4ff;font-weight:900;line-height:1}
+.techHero p{margin:9px 0;color:#b9d3eb;font-size:12px;line-height:1.5}
+.techMilestone{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;color:#9aebfa;font-size:12px;font-weight:800;border-top:1px solid #719cb43b;padding-top:10px}
+.techMilestone small{color:#aac8de;font-weight:500;font-size:10px}
+#upgradeTree{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;text-align:left;margin:10px 0}
+.techBranch{background:linear-gradient(155deg,#0b1d31,#071122);border:1px solid #43617f;border-top:3px solid var(--tech-accent,#6ccaff);border-radius:14px;min-width:0;padding:13px;box-shadow:0 10px 28px #0004}
+.techBranch[data-branch="Production"]{--tech-accent:#f6c46a}
+.techBranch[data-branch="Combat"]{--tech-accent:#ee88a2}
+.techBranch[data-branch="Tactics"]{--tech-accent:#ab9fff}
+.techBranch[data-branch="Command"]{--tech-accent:#73dbb4}
+.techBranchHead{display:flex;align-items:center;gap:10px;min-height:45px}
+.techBranchHead>div{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.techBranchHead strong{color:#e9f7ff;font-size:13px;letter-spacing:1.5px}
+.techBranchHead small{color:#9ab3cd;font-size:10px}
+.techCrest{height:39px;width:39px;flex:0 0 auto;border:1px solid var(--tech-accent);color:var(--tech-accent);border-radius:11px;display:grid;place-items:center;background:#ffffff08;font-size:24px}
+.techProgress{color:var(--tech-accent);font-weight:900;white-space:nowrap;font-size:12px}
+.techTrack{background:#152b42;height:5px;border-radius:6px;margin:11px 0 12px;overflow:hidden}
+.techTrack>div{height:100%;border-radius:6px;background:var(--tech-accent);transition:width .2s ease}
+.techNodes{display:flex;flex-direction:column;gap:7px}
+.techNode{display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;border:1px solid #43638180;border-left:3px solid #496279;background:#0d1b2c;padding:10px;border-radius:9px;color:#d8eaff;min-height:87px;font:inherit;cursor:pointer;white-space:normal;touch-action:manipulation}
+.techNode.available{border-color:var(--tech-accent);border-left-width:4px;background:linear-gradient(100deg,#172f43,#102438);box-shadow:inset 0 0 14px #ffffff06}
+.techNode.available:hover,.techNode.available:focus-visible{background:#1b3d57;outline:2px solid var(--tech-accent);outline-offset:1px}
+.techNode.owned{border-left-color:#78ddbd;background:#10302e;border-color:#427767}
+.techNode:disabled{cursor:default;opacity:.75}
+.techHead{display:flex;align-items:flex-start;justify-content:space-between;gap:9px}
+.techHead strong{font-size:12px;line-height:1.3;color:#f0f7ff}
+.techPrice{font-size:11px;white-space:nowrap;color:#ffe0a1;font-weight:900;background:#ffffff0b;border-radius:5px;padding:2px 4px}
+.techNode.owned .techPrice{color:#9debd2}
+.techDesc{font-size:11px;color:#aec5d9;line-height:1.38}
+.techFoot{display:flex;justify-content:space-between;gap:6px;align-items:baseline;color:#8399b3;font-size:9px;letter-spacing:.3px}
+.techState{color:#a9c4d9;text-align:right;font-weight:700}
+.techNode.available .techState{color:var(--tech-accent)}
+.techNode.owned .techState{color:#91e7c6}
+.techFooter{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:15px 0;color:#94acc5;font-size:11px}
+#modal .techFooter .button{font-size:11px;background:#13273b}
+#production .techAbility{border-color:#9bcde389;color:#ffe7bb}
+#production [hidden]{display:none!important}
+@media(max-width:700px){
+ #modal.techMode{padding:14px 11px}
+ #upgradeTree{grid-template-columns:1fr;gap:12px}
+ .techHero{padding:12px}
+ .techHeroStats{align-items:flex-start}
+ .techHeroStats>div{flex-direction:column;gap:2px}
+ .techPoints{font-size:26px}
+ .techLevel{font-size:22px}
+ .techNode{min-height:72px}
+ #production.show{flex-wrap:wrap}
+ #production .techAbility{font-size:10px;padding:7px 8px}
+}
+@media(orientation:landscape) and (max-height:500px){
+ #production.show{max-width:calc(100vw - 175px);flex-wrap:wrap}
+ #production .techAbility{min-height:32px}
+}
