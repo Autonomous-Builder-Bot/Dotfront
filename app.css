@@ -117,3 +117,9 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
   #tutorialBrief{font-size:11px}
   #tutorial .tutorialButtons .button{padding:5px 8px;min-height:30px;font-size:10px}
 }
+
+/* When the production/upgrade toolbar expands at the bottom of a portrait
+   phone, dock the lesson at the top instead of covering those buttons. */
+@media(max-width:700px) and (orientation:portrait){
+  #tutorial.controlsStep{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto}
+}
