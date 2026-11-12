@@ -123,3 +123,8 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 @media(max-width:700px) and (orientation:portrait){
   #tutorial.controlsStep{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto}
 }
+
+/* Reading-only tutorial slides stay above the unit training area. */
+@media(max-width:700px) and (orientation:portrait){
+  #tutorial.reading{top:max(106px,calc(env(safe-area-inset-top) + 92px));bottom:auto;max-height:min(34dvh,235px)}
+}
