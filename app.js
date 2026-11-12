@@ -79,7 +79,7 @@ const DOCTRINE_MODS=[
  {id:'doc_balanced_master',school:'balanced',tier:4,title:'Grand Strategy',desc:'Production increases a further 8%; newly captured worlds deploy 4 circles.',cost:20,minLevel:75}
 ].map(m=>({...m,branch:'Doctrine',kind:'SPECIALIZATION'}));
 MODS.push(...DOCTRINE_MODS);
-let techSection='doctrine',doctrineFocus='swarm';
+let techSection='doctrine',doctrineFocus='swarm',doctrineFocusInitialized=false;
 function chosenDoctrine(){return WAR_DOCTRINES.find(d=>progress.owned.includes(d.root))?.id||null}
 function doctrineConflict(m,owned=progress.owned){
  if(!m.school)return false;
@@ -101,6 +101,7 @@ function upgradeStatus(m,points=modValue(),level=progress.unlocked){
  return 'READY TO RESEARCH';
 }
 function renderDoctrineTree(level,points){
+ if(!doctrineFocusInitialized){doctrineFocus=chosenDoctrine()||'swarm';doctrineFocusInitialized=true}
  const active=chosenDoctrine(),school=WAR_DOCTRINES.find(d=>d.id===doctrineFocus)||WAR_DOCTRINES[0];
  const picker=WAR_DOCTRINES.map(d=>{
   const owned=active===d.id,locked=active&&active!==d.id;
