@@ -2,7 +2,7 @@
    player progress and upgrades live in localStorage and are never cleared. */
 (() => {
   'use strict';
-  const BUILD = 37;
+  const BUILD = 38;
   const scope = './';
   const guarded = new WeakSet();
   let checking = false;
