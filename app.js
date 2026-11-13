@@ -696,8 +696,10 @@ function fleetAiThink(){
   }).sort((a,b)=>b.value-a.value);
   const target=ranked[0]?.t;if(!target)continue;
   // Different squads receive separate tactical orders in the same AI cycle.
-  const offset=squadId===2?{x:105,y:0}:squadId===3?{x:65,y:y<target.y?-85:85}:
-    squadId===4?{x:60,y:0}:{x:0,y:0};
+  const gap=Math.hypot(target.x-x,target.y-y);
+  const offset=squadId===2?{x:gap>160?85:0,y:0}:
+    squadId===3&&gap>220?{x:65,y:y<target.y?-85:85}:
+    squadId===4&&gap>150?{x:50,y:0}:{x:0,y:0};
   aiSend(ready,{x:clamp(target.x+offset.x,35,W-35),y:clamp(target.y+offset.y,35,H-35)},ready.length);
  }
 }
@@ -716,6 +718,31 @@ function levelBonuses(){
  };
  return cachedBonuses;
 }
+
+// Enemy research advances with campaign progression and responds modestly to
+// the player's purchased technologies. Levels/difficulty determine the opening
+// strength; no bonuses change mid-battle in response to who is winning.
+function enemyChallenge(){
+ const my=levelBonuses();
+ const stage=clamp((currentLevel-15)/110,0,1);
+ const research=clamp(
+    Math.max(0,my.prod-1)*.34+
+    Math.max(0,my.damage-1)*.48+
+    Math.max(0,my.hp-1)*.37+
+    Math.max(0,my.speed-1)*.26+
+    (hasMod('expansion1')?.07:0),0,.38);
+ const isEasy=difficulty==='easy',isHard=difficulty==='hard';
+ return {
+  opening:1+stage*(isEasy?0:isHard?.23:.12)+research*(isEasy?.08:isHard?.62:.43),
+  production:1+stage*(isEasy?0:isHard?.12:.08)+research*(isEasy?.12:isHard?.83:.65),
+  hp:1+stage*(isEasy?0:isHard?.09:.05)+research*(isEasy?.08:isHard?.40:.28),
+  damage:1+stage*(isEasy?0:isHard?.08:.04)+research*(isEasy?.07:isHard?.42:.30),
+  speed:1+stage*(isEasy?0:isHard?.085:.045)+Math.max(0,my.speed-1)*(isEasy?.08:isHard?.64:.48),
+  capture:1+stage*(isEasy?0:isHard?.13:.07)+research*(isEasy?.04:isHard?.39:.25)
+ };
+}
+function enemyOpeningCount(n){return Math.round(n*enemyChallenge().opening)}
+
 function productionPeriod(p){
  let period=specs[p.type].period;
  if(p.team!==0)return period;
@@ -872,7 +899,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-activeBattleDesign=null;bonusKey='';cachedBonuses=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;
+activeBattleDesign=null;bonusKey='';cachedBonuses=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
 activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;// Keep the opening battlefield legible on large maps rather than shrinking
@@ -884,17 +911,19 @@ resize();
 const minimap=$('minimap');if(minimap)minimap.hidden=W<1950;
 if(design.fleetBattle){
  spawnFleetFormation(design,0,design.starter+(hasMod('doc_swarm_wave')?8:0));
- spawnFleetFormation(design,1,design.enemyStarter);
+ spawnFleetFormation(design,1,enemyOpeningCount(design.enemyStarter));
 }else{
  for(const [x,y,t,r,name] of setups)addPlanet(x,y,t,r,name,false);
  for(let i=0;i<design.starter;i++)spawnUnit(planets[0],i%7===0?'square':'circle',true);
  if(hasMod('doc_swarm_wave'))for(let i=0;i<8;i++)spawnUnit(planets[0],'circle',true);
- for(let i=0;i<design.enemyStarter;i++)spawnUnit(planets[1],i%7===0?'square':'circle',true);
- for(const p of planets){if(p.team===0&&p!==planets[0])for(let i=0;i<7;i++)spawnUnit(p,'circle',true);if(p.team===1&&p!==planets[1])for(let i=0;i<5;i++)spawnUnit(p,'circle',true)}
+ for(let i=0;i<enemyOpeningCount(design.enemyStarter);i++)
+  spawnUnit(planets[1],i%8===0?'square':i%9===0?'triangle':'circle',true);
+ for(const p of planets){if(p.team===0&&p!==planets[0])for(let i=0;i<7;i++)spawnUnit(p,'circle',true);if(p.team===1&&p!==planets[1])for(let i=0;i<(currentLevel>=35?8:5);i++)spawnUnit(p,i%6===0?'square':'circle',true)}
 }
 $('modeMove').classList.add('active');updateHud();toast(design.fleetBattle?'Fleet battle: no planets. Destroy the opposing formation!':'Select your units by dragging a box, then click a destination.');}
 function addPlanet(x,y,team,r,name,constructed=true){const p={id:nextId++,x,y,team,r,name:name||('STAR '+Math.floor(rand(100,999))),hp:team===2?180:230,maxHp:team===2?180:230,type:'circle',level:1,spawn:rand(0,.5),rally:null,flash:0,pulse:rand(0,7),built:constructed?0:1,shield:0,overclock:0,overclockCooldown:0,fortify:0,fortifyCooldown:0,warpCount:0,massCount:0,doctrineCount:0};planets.push(p);burst(x,y,team,19,2);return p}
-function spawnUnit(p,type,instant=false){if(units.length>=1100)return null;if(units.length>800&&units.reduce((count,u)=>count+(!u.dead&&u.team===p.team),0)>=700)return null;let a=rand(0,Math.PI*2),r=rand(p.r+10,p.r+52);let u={id:nextId++,x:clamp(p.x+Math.cos(a)*r,12,W-12),y:clamp(p.y+Math.sin(a)*r,12,H-12),team:p.team,type,hp:specs[type].hp*(p.team===0?levelBonuses().hp:1)*doctrineHpMultiplier(type,p.team),maxHp:specs[type].hp*(p.team===0?levelBonuses().hp:1)*doctrineHpMultiplier(type,p.team),vx:0,vy:0,z:rand(7,15),bob:rand(0,6.28),cooldown:rand(0,.8),angle:a,target:null,moveTo:null,upgradeTarget:null,seed:rand(-1,1),shieldWall:null,chargeDistance:0,pursuitUntil:0,dead:false};units.push(u);if(p.rally){
+function spawnUnit(p,type,instant=false){if(units.length>=1100)return null;if(units.length>800&&units.reduce((count,u)=>count+(!u.dead&&u.team===p.team),0)>=700)return null;let a=rand(0,Math.PI*2),r=rand(p.r+10,p.r+52);const unitHp=specs[type].hp*(p.team===0?levelBonuses().hp:enemyChallenge().hp)*doctrineHpMultiplier(type,p.team);
+ let u={id:nextId++,x:clamp(p.x+Math.cos(a)*r,12,W-12),y:clamp(p.y+Math.sin(a)*r,12,H-12),team:p.team,type,hp:unitHp,maxHp:unitHp,vx:0,vy:0,z:rand(7,15),bob:rand(0,6.28),cooldown:rand(0,.8),angle:a,target:null,moveTo:null,upgradeTarget:null,seed:rand(-1,1),shieldWall:null,chargeDistance:0,pursuitUntil:0,dead:false};units.push(u);if(p.rally){
  u.moveTo={x:p.rally.x+rand(-15,15),y:p.rally.y+rand(-15,15)};
  if(p.team===0&&hasMod('warplogistics')&&++p.warpCount%(hasMod('rapidredeploy')?2:4)===0){
   const dx=u.moveTo.x-u.x,dy=u.moveTo.y-u.y,d=Math.hypot(dx,dy);
@@ -908,7 +937,9 @@ function buildAt(pos,team=0,force=false){if(activeBattleDesign?.fleetBattle)retu
 function capturePlanet(p,team){p.team=team;p.hp=p.maxHp*.55;p.type='circle';p.level=1;p.spawn=0;p.rally=null;p.flash=1;p.shield=1.6;p.overclock=0;p.overclockCooldown=0;p.fortify=0;p.fortifyCooldown=0;burst(p.x,p.y,team,55,1.8);if(selectedPlanet===p&&team!==0)selectedPlanet=null;if(team===0)toast(p.name+' captured!');else toast('An enemy captured '+p.name+'.');}
 function update(dt){elapsed+=dt;aiTimer+=dt;lasers=lasers.filter(l=>(l.life-=dt)>0);for(const p of planets){p.pulse+=dt;p.flash=Math.max(0,p.flash-dt*1.7);p.shield=Math.max(0,p.shield-dt);p.overclock=Math.max(0,p.overclock-dt);p.overclockCooldown=Math.max(0,p.overclockCooldown-dt);p.fortify=Math.max(0,p.fortify-dt);p.fortifyCooldown=Math.max(0,p.fortifyCooldown-dt);if(p.team===2)continue;
  const network=p.team===0&&hasMod('factorynetwork')?1+Math.min(.18,planets.filter(other=>other!==p&&other.team===0&&dist(p,other)<320).length*.06):1;
- p.spawn+=dt*(p.level===1?1:1.35)*(p.team===1?aiConfig[difficulty].production*levelBonuses().aiScale:levelBonuses().prod*network*(p.overclock>0?2:1));
+ p.spawn+=dt*(p.level===1?1:1.35)*
+  (p.team===1?aiConfig[difficulty].production*levelBonuses().aiScale*enemyChallenge().production:
+    levelBonuses().prod*network)*(p.overclock>0?2:1);
  const interval=productionPeriod(p);while(p.spawn>=interval){p.spawn-=interval;const spawned=spawnUnit(p,p.type);
   if(spawned&&p.team===0&&hasMod('massfabrication')&&p.type==='circle'&&++p.massCount%7===0)spawnUnit(p,'circle');if(spawned&&p.team===0&&hasMod('doc_swarm_master')&&p.type==='circle'&&++p.doctrineCount%6===0)spawnUnit(p,'circle');
  }p.hp=Math.min(p.maxHp,p.hp+dt*(p.level>1?2.8:1.2)*(p.team===0?levelBonuses().regen:1))}
@@ -921,7 +952,7 @@ for(const p of planets)if(p.team!==u.team){const d=dist(u,p)-p.r;if(d<Math.max(6
 if(enemy&&ed<attackRange+4){
  if(u.cooldown<=0){
   const wallArmor=enemy.team===0&&enemy.type==='square'&&enemy.shieldWall&&dist(enemy,enemy.shieldWall)<27?(hasMod('expansion3')?10:6):0;
-  let baseDamage=spec.damage*(u.team===0?levelBonuses().damage:1);
+  let baseDamage=spec.damage*(u.team===0?levelBonuses().damage:enemyChallenge().damage);
   if(u.team===0){
    if(u.type==='circle'&&hasMod('doc_swarm_pack')&&near(u).filter(v=>v!==u&&!v.dead&&v.team===0&&v.type==='circle'&&dist(v,u)<72).length>=3)baseDamage*=1.22;
    if(u.type==='square'&&hasMod('doc_iron_phalanx')&&near(u).some(v=>v!==u&&!v.dead&&v.team===0&&v.type==='square'&&dist(v,u)<70))baseDamage*=1.18;
@@ -960,19 +991,20 @@ if(enemy&&ed<attackRange+4){
 if(ep&&epd<attackRange&&spec.capture){
  if(u.cooldown<=0&&ep.shield<=0){
   const healthFactor=.3+.7*clamp(u.hp/u.maxHp,0,1);
-  const captureDamage=spec.damage*.7*healthFactor*(u.team===0?levelBonuses().capture*levelBonuses().damage:1)*(u.team===0&&u.type==='triangle'&&hasMod('expansion1')?2:1);
-  ep.hp-=captureDamage*(ep.team===0&&ep.fortify>0?.65:1);u.cooldown=spec.attackPeriod*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_volley')?.8:1);ep.flash=.22;
+  const captureDamage=spec.damage*.7*healthFactor*(u.team===0?levelBonuses().capture*levelBonuses().damage:enemyChallenge().capture*enemyChallenge().damage)*(u.team===0&&u.type==='triangle'&&hasMod('expansion1')?2:1);
+  ep.hp-=captureDamage*(ep.fortify>0?.65:1);u.cooldown=spec.attackPeriod*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_volley')?.8:1);ep.flash=.22;
   if(spec.ranged)lasers.push({x1:u.x,y1:u.y,x2:ep.x,y2:ep.y,team:u.team,life:.16,max:.16});
   else burst(ep.x+rand(-ep.r,ep.r),ep.y+rand(-ep.r,ep.r),ep.team,3,.3);
   if(ep.hp<=0)capturePlanet(ep,u.team);
  }
  continue;
 }
-let goal=u.moveTo;if(enemy&&ed<65)goal=enemy;else if(ep&&epd<65&&spec.capture)goal=ep;if(goal){let dx=goal.x-u.x,dy=goal.y-u.y,d=Math.hypot(dx,dy);if(d>6){let speed=spec.speed*(u.team===1?aiConfig[difficulty].speed:levelBonuses().speed)*(d<35?.5:1)*unitSpeedDoctrine(u);u.vx+=(dx/d*speed-u.vx)*Math.min(1,dt*5);u.vy+=(dy/d*speed-u.vy)*Math.min(1,dt*5)}else{u.vx*=Math.max(0,1-dt*7);u.vy*=Math.max(0,1-dt*7);if(goal===u.moveTo)u.moveTo=null}}else{u.vx*=Math.max(0,1-dt*5);u.vy*=Math.max(0,1-dt*5)}if(u.shieldWall&&!u.moveTo&&dist(u,u.shieldWall)>13)u.moveTo={x:u.shieldWall.x,y:u.shieldWall.y};// soft nearby ally separation
+let goal=u.moveTo;if(enemy&&ed<65)goal=enemy;else if(ep&&epd<65&&spec.capture)goal=ep;if(goal){let dx=goal.x-u.x,dy=goal.y-u.y,d=Math.hypot(dx,dy);if(d>6){let speed=spec.speed*(u.team===1?aiConfig[difficulty].speed*enemyChallenge().speed:levelBonuses().speed)*(d<35?.5:1)*unitSpeedDoctrine(u);u.vx+=(dx/d*speed-u.vx)*Math.min(1,dt*5);u.vy+=(dy/d*speed-u.vy)*Math.min(1,dt*5)}else{u.vx*=Math.max(0,1-dt*7);u.vy*=Math.max(0,1-dt*7);if(goal===u.moveTo)u.moveTo=null}}else{u.vx*=Math.max(0,1-dt*5);u.vy*=Math.max(0,1-dt*5)}if(u.shieldWall&&!u.moveTo&&dist(u,u.shieldWall)>13)u.moveTo={x:u.shieldWall.x,y:u.shieldWall.y};// soft nearby ally separation
 let sx=0,sy=0,k=0;for(const other of near(u))if(other!==u&&other.team===u.team&&!other.dead){let dx=u.x-other.x,dy=u.y-other.y,d2=dx*dx+dy*dy;if(d2>0&&d2<160){sx+=dx/Math.sqrt(d2);sy+=dy/Math.sqrt(d2);if(++k>10)break}}const oldX=u.x,oldY=u.y;
  u.x=clamp(u.x+(u.vx+sx*18)*dt,4,W-4);u.y=clamp(u.y+(u.vy+sy*18)*dt,4,H-4);
  if(u.type==='cavalry'&&goal&&Math.hypot(u.vx,u.vy)>45)u.chargeDistance=Math.min(220,u.chargeDistance+Math.hypot(u.x-oldX,u.y-oldY));
- if(u.team===0&&hasMod('supplylines')&&planets.some(p=>p.team===0&&dist(u,p)<p.r+100))u.hp=Math.min(u.maxHp,u.hp+dt*1.2);if(Math.hypot(u.vx,u.vy)>3)u.angle=Math.atan2(u.vy,u.vx)}processUpgradeArrivals();units=units.filter(u=>!u.dead);for(const pa of particles){pa.x+=pa.vx*dt;pa.y+=pa.vy*dt;pa.vx*=Math.max(0,1-dt*2);pa.vy*=Math.max(0,1-dt*2);pa.life-=dt}particles=particles.filter(p=>p.life>0);if(tutorialActive){const step=tutorialSteps[tutorialIndex];if(step.event==='duel'&&tutorialFoeId&&!units.some(u=>!u.dead&&u.id===tutorialFoeId))tutorialAction('duel');if(step.event==='capture'&&planets.some(p=>p.team===0&&p.name==='TARGET'))tutorialAction('capture')}else{if(elapsed>=aiConfig[difficulty].delay&&aiTimer>aiConfig[difficulty].interval/Math.min(1.6,levelBonuses().aiScale)){aiTimer=0;aiThink()}checkEnd()}updateHud();}
+ if(u.team===0&&hasMod('supplylines')&&planets.some(p=>p.team===0&&dist(u,p)<p.r+100))u.hp=Math.min(u.maxHp,u.hp+dt*1.2);if(Math.hypot(u.vx,u.vy)>3)u.angle=Math.atan2(u.vy,u.vx)}processUpgradeArrivals();units=units.filter(u=>!u.dead);for(const pa of particles){pa.x+=pa.vx*dt;pa.y+=pa.vy*dt;pa.vx*=Math.max(0,1-dt*2);pa.vy*=Math.max(0,1-dt*2);pa.life-=dt}particles=particles.filter(p=>p.life>0);if(tutorialActive){const step=tutorialSteps[tutorialIndex];if(step.event==='duel'&&tutorialFoeId&&!units.some(u=>!u.dead&&u.id===tutorialFoeId))tutorialAction('duel');if(step.event==='capture'&&planets.some(p=>p.team===0&&p.name==='TARGET'))tutorialAction('capture')}else{if(elapsed>=(difficulty==='normal'?Math.max(1,6-currentLevel*.09):aiConfig[difficulty].delay)&&
+ aiTimer>aiConfig[difficulty].interval/Math.min(1.8,levelBonuses().aiScale*(currentLevel>=35?1.16:1))){aiTimer=0;aiThink()}checkEnd()}updateHud();}
 function performUpgrade(p,pool){if(!p||p.team!==0||p.level>=3||pool.length<20)return false;for(const u of pool.slice(0,20)){u.dead=true;selected.delete(u);burst(u.x,u.y,0,5,.55)}p.level++;p.maxHp+=85;p.hp=p.maxHp;burst(p.x,p.y,0,38,1.5);toast(p.name+' upgraded to level '+p.level+'! 20 dots consumed.');updateHud();tutorialAction('upgrade');return true}
 function processUpgradeArrivals(){for(const p of planets){if(p.team!==0||p.level>=3)continue;const pool=units.filter(u=>!u.dead&&u.team===0&&u.upgradeTarget===p.id&&dist(u,p)<p.r+76);if(pool.length>=20){performUpgrade(p,pool);for(const u of units)if(u.upgradeTarget===p.id)u.upgradeTarget=null}}}
 // Utility-based AI: estimates local defense, opportunities, and threat rather than always attacking nearest.
@@ -983,142 +1015,133 @@ function aiSend(group,target,count){group.sort((a,b)=>dist(a,target)-dist(b,targ
 // role and an objective between AI ticks; newly produced units join nearby squads.
 let planetAiSquads=new Map(),planetAiNextSquad=1,planetAiDecision=0;
 function planetSquadThink(owned,foe,neutral,mine,theirs,doctrine){
- const power=list=>list.reduce((sum,u)=>sum+aiPower(u),0);
+ // Shared strategic planning, independent standing orders for real squads.
+ const power=arr=>arr.reduce((v,u)=>v+aiPower(u),0);
  const mineById=new Map(mine.map(u=>[u.id,u]));
  const planetById=new Map(planets.map(p=>[p.id,p]));
- const roles=['assault','guard','flank','reserve'];
- // Retire destroyed squads, release understrength groups for reinforcement.
- for(const [id,squad] of planetAiSquads){
-  squad.members=squad.members.filter(uid=>mineById.has(uid));
-  if(!squad.members.length)planetAiSquads.delete(id);
+ const roles=['assault','assault','guard','flank','assault','reserve'];
+ for(const [id,q] of planetAiSquads){
+  q.members=q.members.filter(uid=>mineById.has(uid));
+  if(!q.members.length)planetAiSquads.delete(id);
  }
- const squadOf=new Map();
- for(const squad of planetAiSquads.values())
-  for(const uid of squad.members)squadOf.set(uid,squad);
- const unassigned=mine.filter(u=>!squadOf.has(u.id));
- // Guard units use squares preferentially; fast units join flanking groups.
- for(const u of unassigned){
-  let candidates=[...planetAiSquads.values()].filter(q=>
-   q.members.length<q.capacity&&q.members.length&&
-   Math.hypot(u.x-q.x,u.y-q.y)<(q.role==='flank'?320:270));
-  candidates.sort((a,b)=>{
-   const fit=q=>Math.hypot(u.x-q.x,u.y-q.y)-
-    (u.type==='cavalry'&&q.role==='flank'?100:0)-
-    (u.type==='square'&&q.role==='guard'?70:0)-
-    (u.type==='triangle'&&q.role==='assault'?40:0);
-   return fit(a)-fit(b);
+ const assigned=new Set();
+ for(const q of planetAiSquads.values())for(const uid of q.members)assigned.add(uid);
+ for(const u of mine){
+  if(assigned.has(u.id))continue;
+  const possible=[...planetAiSquads.values()].filter(q=>
+   q.members.length<q.capacity&&Math.hypot(u.x-q.x,u.y-q.y)<275);
+  possible.sort((a,b)=>{
+   const preference=q=>Math.hypot(u.x-q.x,u.y-q.y)
+    -(u.type==='cavalry'&&q.role==='flank'?105:0)
+    -(u.type==='square'&&q.role==='guard'?80:0)
+    -(u.type==='triangle'&&q.role==='assault'?35:0);
+   return preference(a)-preference(b);
   });
-  let squad=candidates[0];
-  if(!squad){
-   const index=planetAiNextSquad++;
-   const role=roles[(index-1)%roles.length];
-   squad={id:index,role,members:[],capacity:role==='guard'?15:role==='reserve'?18:22,
-    x:u.x,y:u.y,objective:null,lastOrder:-100,lastPlan:-100};
-   planetAiSquads.set(index,squad);
+  let q=possible[0];
+  if(!q){
+   const id=planetAiNextSquad++,role=roles[(id-1)%roles.length];
+   q={id,role,members:[],capacity:role==='guard'?16:role==='reserve'?19:25,
+     x:u.x,y:u.y,objective:null,lastOrder:-100,lastPlan:-100,flankPhase:0};
+   planetAiSquads.set(id,q);
   }
-  squad.members.push(u.id);squadOf.set(u.id,squad);u.aiSquad=squad.id;
+  q.members.push(u.id);u.aiSquad=q.id;
  }
- // Keep squad centers current and supply squads with partial reinforcements.
- const squads=[...planetAiSquads.values()].filter(q=>q.members.length);
- for(const q of squads){
-  const members=q.members.map(id=>mineById.get(id)).filter(Boolean);
-  q.x=members.reduce((total,u)=>total+u.x,0)/members.length;
-  q.y=members.reduce((total,u)=>total+u.y,0)/members.length;
-  q.power=power(members);
-  q.members=members.map(u=>u.id);
- }
- const fronts=[...foe,...neutral];
- const assignedTargets=new Map();
- const closest=(arr,p)=>arr.reduce((best,v)=>{
-  const d=Math.hypot(v.x-p.x,v.y-p.y);
-  return d<best.distance?{value:v,distance:d}:best;
- },{value:null,distance:Infinity}).value;
- const danger=p=>power(theirs.filter(u=>dist(u,p)<270));
- const defense=p=>power(mine.filter(u=>dist(u,p)<185));
- const threatened=owned.map(p=>({p,score:danger(p)-defense(p)*.8}))
-  .sort((a,b)=>b.score-a.score);
- const priorityDefense=threatened[0]?.score>6?threatened[0].p:null;
- const stage=Math.min(1,currentLevel/70);
- // Decide independently for each squad, but distribute objectives across them.
+ const squads=[...planetAiSquads.values()];
  for(const q of squads){
   const members=q.members.map(id=>mineById.get(id)).filter(Boolean);
   if(!members.length)continue;
-  const idle=elapsed-q.lastOrder>8;
-  const objective=planetById.get(q.objective);
-  const objectiveInvalid=!objective||(q.role==='assault'||q.role==='flank')&&objective.team===1;
-  const localThreat=power(theirs.filter(u=>Math.hypot(u.x-q.x,u.y-q.y)<165));
-  const underThreat=localThreat>q.power*1.45;
-  const shouldReplan=objectiveInvalid||elapsed-q.lastPlan>(13+(q.id%4)*2)||
-   (priorityDefense&&q.role==='reserve'&&q.objective!==priorityDefense.id);
-  if(!idle&&!underThreat&&!shouldReplan)continue;
-  let destination=null,selected=null;
-  if(q.role==='guard'||(q.role==='reserve'&&priorityDefense)){
-   const base=q.role==='reserve'&&priorityDefense?priorityDefense:
-    owned.slice().sort((a,b)=>(danger(b)-defense(b)*.65)-(danger(a)-defense(a)*.65))[0];
-   if(base){
-    selected=base;
-    const nearbyAttackers=theirs.filter(u=>dist(u,base)<240);
-    const hostile=closest(nearbyAttackers,base);
-    destination=hostile&&dist(hostile,base)<225?
-     {x:clamp(hostile.x,35,W-35),y:clamp(hostile.y,35,H-35)}:
-     {x:base.x+(q.id%3-1)*48,y:base.y+65};
+  q.x=members.reduce((t,u)=>t+u.x,0)/members.length;
+  q.y=members.reduce((t,u)=>t+u.y,0)/members.length;
+  q.power=power(members);
+  q.health=members.reduce((t,u)=>t+u.hp/u.maxHp,0)/members.length;
+ }
+ const nearby=(arr,p,r)=>arr.filter(u=>dist(u,p)<r);
+ const danger=p=>power(nearby(theirs,p,265));
+ const guard=p=>power(nearby(mine,p,200));
+ const threats=owned.map(p=>({p,bad:danger(p)-guard(p)*.85}))
+    .sort((a,b)=>b.bad-a.bad);
+ const urgent=threats[0]?.bad>5?threats[0].p:null;
+ const covered=new Map();
+ const targets=[...neutral,...foe];
+ const frontline=owned.slice().sort((a,b)=>{
+  const da=Math.min(...foe.map(p=>dist(p,a))),db=Math.min(...foe.map(p=>dist(p,b)));
+  return da-db;
+ });
+ for(const q of squads){
+  const members=q.members.map(id=>mineById.get(id)).filter(Boolean);
+  if(!members.length)continue;
+  const oldPlanet=planetById.get(q.objective);
+  const oldValid=oldPlanet&&(oldPlanet.team===2||oldPlanet.team===0);
+  const localEnemy=power(theirs.filter(u=>Math.hypot(u.x-q.x,u.y-q.y)<155));
+  const nearFront=frontline.some(p=>dist(p,q)<360);
+  // Guards and reserves act as second-line attackers in quiet sectors.
+  const guardActive=q.role==='guard'&&(urgent||nearby(theirs,q,285).length>5);
+  const reserveActive=q.role==='reserve'&&!!urgent;
+  const mode=guardActive||reserveActive?'defend':
+    q.role==='flank'?'flank':'attack';
+  const threatened=localEnemy>q.power*1.8&&q.health<.46;
+  const stale=elapsed-q.lastPlan>10+(q.id%4)*1.5;
+  const idle=elapsed-q.lastOrder>7;
+  const reassess=stale||!oldValid||mode==='defend'&&oldPlanet!==urgent||threatened;
+  if(!reassess&&!idle&&!(q.role==='flank'&&q.flankPhase===1))continue;
+  let selected=null,destination=null,staging=false;
+  if(mode==='defend'){
+   selected=urgent||frontline[0]||owned[0];
+   if(selected){
+    const invader=theirs.filter(u=>dist(u,selected)<275)
+      .sort((a,b)=>dist(a,selected)-dist(b,selected))[0];
+    destination=invader?{x:invader.x,y:invader.y}:
+      {x:clamp(selected.x+((q.id%3)-1)*45,25,W-25),y:clamp(selected.y+55,25,H-25)};
    }
-  }else if(q.role==='reserve'){
-   const base=closest(owned,q);
-   if(base){
-    selected=base;
-    const attackers=theirs.filter(u=>dist(u,base)<260);
-    const hostile=closest(attackers,base);
-    destination=hostile?{x:hostile.x,y:hostile.y}:
-      {x:base.x+(q.id%3-1)*45,y:base.y+75};
-   }
-  }else if(fronts.length){
-   const ranked=fronts.map(p=>{
+  }else{
+   const options=targets.map(p=>{
     const d=dist(p,q);
-    const defenders=power(theirs.filter(u=>dist(u,p)<155));
+    const enemyPower=power(nearby(theirs,p,160));
     const support=power(mine.filter(u=>dist(u,p)<170&&u.aiSquad!==q.id));
-    const advantage=(q.power+support*.35)/(defenders+(p.team===0?11:7));
-    const contested=assignedTargets.get(p.id)||0;
-    const economy=p.team===2?42:56+p.level*7;
-    const exposed=p.team===0&&defenders<8?20:0;
-    const flanking=q.role==='flank'&&Math.abs(q.y-p.y)>165?18:0;
-    const style=doctrine==='expander'&&p.team===2?14:doctrine==='raider'&&p.team===0?14:0;
-    // Penalize overcommitment; coordinate multiple directions.
-    const score=economy+exposed+flanking+style-d*.092-
-     Math.max(0,1.1-advantage)*39-contested*25+
-     Math.min(25,advantage*10)+(Math.random()-.5)*stage*15;
-    return {p,score};
+    const advantage=(q.power+support*.45)/(enemyPower+(p.team===0?11:6));
+    const isEnemy=p.team===0;
+    const weakBase=isEnemy&&enemyPower<8?20:0;
+    const doctrineBoost=(doctrine==='expander'&&!isEnemy?16:0)+
+      (doctrine==='raider'&&isEnemy?16:0)+(doctrine==='siege'&&isEnemy?10:0);
+    const commitment=covered.get(p.id)||0;
+    const stickiness=q.objective===p.id?17:0;
+    return {p,score:(isEnemy?63:46)+p.level*5+weakBase+doctrineBoost+
+      Math.min(28,advantage*10)-Math.max(0,1-advantage)*28-
+      commitment*22+stickiness-d*.073+
+      (Math.random()-.5)*(currentLevel>25?9:3)};
    }).sort((a,b)=>b.score-a.score);
-   const viable=ranked[0];
-   if(viable&&viable.score>0){
-    selected=viable.p;
-    destination={x:selected.x,y:selected.y};
-    if(q.role==='flank'){
-     const dy=q.y<selected.y?-85:85;
-     destination={x:clamp(selected.x+(selected.x>W/2?65:-65),35,W-35),
-      y:clamp(selected.y+dy,35,H-35)};
-    }
-    assignedTargets.set(selected.id,(assignedTargets.get(selected.id)||0)+1);
+   const best=options[0];
+   if(best&&best.score>5){
+    selected=best.p;
+    covered.set(selected.id,(covered.get(selected.id)||0)+1);
+    if(mode==='flank'){
+     const newTarget=q.objective!==selected.id;
+     if(newTarget)q.flankPhase=0;
+     const direction=selected.x<q.x?1:-1;
+     const staged={x:clamp(selected.x+direction*120,30,W-30),
+       y:clamp(selected.y+(q.y<selected.y?-135:135),30,H-30)};
+     if(q.flankPhase===0&&dist(q,staged)>100&&dist(q,selected)>210){
+      destination=staged;staging=true;
+     }else{q.flankPhase=1;destination={x:selected.x,y:selected.y}}
+    }else destination={x:selected.x,y:selected.y};
    }
   }
-  // A damaged assault group can fall back toward friendly reinforcements.
-  if(underThreat&&q.role!=='guard'&&q.role!=='reserve'&&currentLevel>=18){
-   const fallback=closest(owned,q);
-   if(fallback){destination={x:fallback.x,y:fallback.y};selected=fallback}
+  if(threatened&&mode!=='defend'){
+   const home=owned.slice().sort((a,b)=>dist(a,q)-dist(b,q))[0];
+   if(home&&dist(home,q)<500){destination={x:home.x,y:home.y};selected=home;staging=false}
   }
   if(destination){
-   // Reissue only after an actual tactical change or when most units stopped.
-   const changed=q.objective!==selected?.id;
-   if(idle||changed||underThreat){
+   const changed=q.objective!==selected?.id||q.staging!==staging;
+   if(changed||idle||threatened){
     aiSend(members,destination,members.length);
     q.lastOrder=elapsed;
    }
    q.objective=selected?.id??null;
    q.lastPlan=elapsed;
+   q.staging=staging;
   }
  }
 }
-
 function aiThink(){
  if(activeBattleDesign?.fleetBattle){fleetAiThink();return}
  const doctrine=levelBonuses().design.aiStyle,owned=planets.filter(p=>p.team===1),foe=planets.filter(p=>p.team===0),neutral=planets.filter(p=>p.team===2),mine=units.filter(u=>u.team===1&&!u.dead),theirs=units.filter(u=>u.team===0&&!u.dead);
@@ -1159,6 +1182,7 @@ function aiThink(){
    p.level=2;p.maxHp+=85;p.hp+=85;burst(p.x,p.y,1,10,.6);
   }
  }
+ enemyUseAbilities(owned,foe,theirs);
  planetSquadThink(owned,foe,neutral,mine,theirs,doctrine);
  // AI uses only the defined planets in each level; construction is disabled.
 
