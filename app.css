@@ -407,3 +407,57 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
  #zoomControls{top:max(50px,calc(env(safe-area-inset-top) + 43px));left:max(7px,env(safe-area-inset-left));gap:4px}
  #zoomControls .button{width:35px;height:35px;min-height:35px;font-size:20px}
 }
+
+
+/* Planet selection: keep production controls visible instead of hiding them
+   off-screen in the horizontal general-actions rail. */
+#actions:has(> #production.show){
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-rows:auto auto;
+  align-items:end;
+  gap:6px 8px;
+}
+#actions > #production.show{
+  grid-column:1/-1;
+  grid-row:1;
+  display:flex;
+  width:max-content;
+  max-width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  touch-action:pan-x;
+  overscroll-behavior-x:contain;
+  scrollbar-width:thin;
+  padding:5px;
+}
+#actions:has(> #production.show) > #tools{
+  grid-column:1;
+  grid-row:2;
+  min-width:0;
+}
+#actions:has(> #production.show) > #tempoControls{
+  grid-column:2;
+  grid-row:2;
+}
+@media(max-width:700px) and (orientation:portrait){
+  #actions > #production.show{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:100%;
+    max-width:100%;
+    overflow:visible;
+    gap:4px;
+  }
+  #actions > #production.show .button{
+    min-width:0;
+    width:100%;
+    padding:7px 4px;
+    min-height:40px;
+    white-space:normal;
+    font-size:11px;
+  }
+  #actions > #production.show::before{display:none}
+  #actions:has(> #production.show) > #tools{padding-bottom:4px}
+}
