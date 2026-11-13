@@ -722,7 +722,9 @@ function levelBonuses(){
 // Enemy research advances with campaign progression and responds modestly to
 // the player's purchased technologies. Levels/difficulty determine the opening
 // strength; no bonuses change mid-battle in response to who is winning.
+let enemyStatsCache=null;
 function enemyChallenge(){
+ if(enemyStatsCache)return enemyStatsCache;
  const my=levelBonuses();
  const stage=clamp((currentLevel-15)/110,0,1);
  const research=clamp(
@@ -732,7 +734,7 @@ function enemyChallenge(){
     Math.max(0,my.speed-1)*.26+
     (hasMod('expansion1')?.07:0),0,.38);
  const isEasy=difficulty==='easy',isHard=difficulty==='hard';
- return {
+ return enemyStatsCache={
   opening:1+stage*(isEasy?0:isHard?.23:.12)+research*(isEasy?.08:isHard?.62:.43),
   production:1+stage*(isEasy?0:isHard?.12:.08)+research*(isEasy?.12:isHard?.83:.65),
   hp:1+stage*(isEasy?0:isHard?.09:.05)+research*(isEasy?.08:isHard?.40:.28),
@@ -899,7 +901,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-activeBattleDesign=null;bonusKey='';cachedBonuses=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;
+activeBattleDesign=null;bonusKey='';cachedBonuses=null;enemyStatsCache=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
 activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;// Keep the opening battlefield legible on large maps rather than shrinking
