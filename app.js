@@ -605,35 +605,32 @@ function fleetBattleDesign(n,base){
   aiStyle:historical?.ai||'raider',worldWidth:Math.round(BASE_W*(1+.34*t)),worldHeight:Math.round(BASE_H*(1+.24*t))};
 }
 function spawnFleetFormation(design,team,count){
- const form=design.fleetFormation,W0=W,H0=H;
- const dir=team===0?1:-1,baseX=team===0?W0*.23:W0*.77;
- const centerY=H0*(.48+(Math.random()-.5)*.12);
- const lanes=Math.min(11,Math.max(5,Math.ceil(Math.sqrt(count))));
- const rows=Math.ceil(count/lanes);
- const centerOffset=(lanes-1)/2;
- const anchor={team,x:baseX,y:centerY,r:0,rally:null};
- for(let i=0;i<count;i++){
-  const col=i%lanes,row=Math.floor(i/lanes);
-  const lane=(col-centerOffset),spread=lane/Math.max(1,centerOffset);
-  let fx=row*25,fy=lane*34;
-  if(form==='wedge')fx+=Math.abs(spread)*-90;
-  else if(form==='wings')fx+=Math.abs(spread)*100;
-  else if(form==='crescent')fx+=Math.abs(spread)*-95;
-  else if(form==='echelon')fx+=spread*85;
-  else if(form==='columns')fx+=((col%3)-1)*35;
-  else if(form==='reserve')fx+=row>=Math.ceil(rows*.65)?-120:Math.abs(spread)*30;
-  else if(form==='pincer')fx+=Math.abs(spread)*120;
-  else if(form==='line')fx-=row*10;
-  const x=clamp(baseX+dir*fx+(Math.random()-.5)*9,50,W0-50);
-  const y=clamp(centerY+fy+(Math.random()-.5)*12,45,H0-45);
-  let type='circle';
-  if(numericFleetUnitType(i,team,design)==='triangle')type='triangle';
-  else if(numericFleetUnitType(i,team,design)==='square')type='square';
-  else if(numericFleetUnitType(i,team,design)==='cavalry')type='cavalry';
-  else if(numericFleetUnitType(i,team,design)==='rectangle')type='rectangle';
-  const u=spawnUnit(anchor,type,true);
-  if(u){u.x=x;u.y=y;u.angle=team===0?0:Math.PI}
- }
+ // Cohesive, physically separated battalions with one troop type per squad.
+ const groups=[['circle',.42],['square',.23],['triangle',.20],
+   [currentLevel>=20?'cavalry':'circle',.10],
+   [currentLevel>=30?'rectangle':'square',.05]];
+ const direction=team===0?1:-1,baseX=W*(team===0?.20:.80);
+ let remaining=count;
+ groups.forEach(([type,share],squad)=>{
+  const n=squad===groups.length-1?remaining:Math.min(remaining,Math.round(count*share));
+  remaining-=n;if(!n)return;
+  const band=H*(.16+squad*.17);
+  const form=design.fleetFormation;
+  const bend=(form==='pincer'||form==='wings')?(squad===0||squad===3?90:-30):
+    form==='echelon'?(squad-2)*35:(form==='wedge'||form==='crescent')?-Math.abs(squad-2)*35:
+    form==='reserve'&&squad===4?-120:0;
+  const x0=baseX+direction*bend;
+  const columns=Math.min(8,Math.max(3,Math.ceil(Math.sqrt(n*1.6))));
+  const rows=Math.ceil(n/columns);
+  const anchor={team,x:x0,y:band,r:0,rally:null};
+  for(let i=0;i<n;i++){
+   const u=spawnUnit(anchor,type,true);if(!u)continue;
+   const column=i%columns,row=Math.floor(i/columns);
+   u.x=clamp(x0+direction*(row-(rows-1)/2)*27+(Math.random()-.5)*6,35,W-35);
+   u.y=clamp(band+(column-(columns-1)/2)*23+(Math.random()-.5)*6,30,H-30);
+   u.squad=squad;u.angle=team===0?0:Math.PI;
+  }
+ });
 }
 function numericFleetUnitType(i,team,design){
  const code=(i*7+Math.floor(i/5)+team*3)%20;
@@ -646,22 +643,40 @@ function numericFleetUnitType(i,team,design){
 function fleetAiThink(){
  const mine=units.filter(u=>u.team===1&&!u.dead),foe=units.filter(u=>u.team===0&&!u.dead);
  if(!mine.length||!foe.length)return;
- // Advance in detachments toward vulnerable groups instead of waiting forever.
- const groups=new Map();
- for(const u of mine){const lane=Math.floor(u.y/(H/4));if(!groups.has(lane))groups.set(lane,[]);groups.get(lane).push(u)}
- for(const group of groups.values()){
-  const eligible=group.filter(u=>!u.aiOrder||elapsed-u.aiOrder>3);
-  if(!eligible.length)continue;
-  const cx=eligible.reduce((sum,u)=>sum+u.x,0)/eligible.length;
-  const cy=eligible.reduce((sum,u)=>sum+u.y,0)/eligible.length;
-  const target=foe.reduce((best,u)=>{
-   const d=Math.hypot(u.x-cx,u.y-cy);
-   return !best||d<best.distance?{unit:u,distance:d}:best;
-  },null)?.unit;
-  if(target)aiSend(eligible,{x:target.x,y:target.y},eligible.length);
+ const groups=new Map(),enemyGroups=new Map();
+ for(const u of mine){const k=u.squad??0;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(u)}
+ for(const u of foe){const k=u.squad??Math.floor(u.y/(H/5));if(!enemyGroups.has(k))enemyGroups.set(k,[]);enemyGroups.get(k).push(u)}
+ const targets=[...enemyGroups.values()].map(arr=>({
+  x:arr.reduce((v,u)=>v+u.x,0)/arr.length,
+  y:arr.reduce((v,u)=>v+u.y,0)/arr.length,
+  strength:arr.reduce((v,u)=>v+aiPower(u),0),
+  exposed:arr.filter(u=>u.type==='triangle'||u.hp<u.maxHp*.5).length
+ }));
+ for(const [squadId,squad] of groups){
+  const ready=squad.filter(u=>!u.aiOrder||elapsed-u.aiOrder>3.5);
+  if(!ready.length)continue;
+  const x=squad.reduce((v,u)=>v+u.x,0)/squad.length,y=squad.reduce((v,u)=>v+u.y,0)/squad.length;
+  const power=squad.reduce((v,u)=>v+aiPower(u),0);
+  const threat=foe.filter(u=>Math.hypot(u.x-x,u.y-y)<175).reduce((v,u)=>v+aiPower(u),0);
+  if(currentLevel>=15&&threat>power*1.65&&(squadId===2||squad.length<4)){
+   aiSend(ready,{x:clamp(x+100,35,W-35),y:clamp(y+(y<H/2?-45:45),35,H-35)},ready.length);
+   continue;
+  }
+  const ranked=targets.map(t=>{
+   const range=Math.hypot(t.x-x,t.y-y);
+   const assistance=mine.filter(u=>u.squad!==squadId&&Math.hypot(u.x-t.x,u.y-t.y)<210)
+     .reduce((v,u)=>v+aiPower(u),0);
+   const advantage=(power+assistance*.5)/(t.strength+2);
+   const value=t.exposed*3+Math.min(25,advantage*12)-range*.12-(advantage<.65?36:0);
+   return {t,value};
+  }).sort((a,b)=>b.value-a.value);
+  const target=ranked[0]?.t;if(!target)continue;
+  // Different squads receive separate tactical orders in the same AI cycle.
+  const offset=squadId===2?{x:105,y:0}:squadId===3?{x:65,y:y<target.y?-85:85}:
+    squadId===4?{x:60,y:0}:{x:0,y:0};
+  aiSend(ready,{x:clamp(target.x+offset.x,35,W-35),y:clamp(target.y+offset.y,35,H-35)},ready.length);
  }
 }
-
 let activeBattleDesign=null,bonusKey='',cachedBonuses=null;
 function levelBonuses(){
  const key=currentLevel+'|'+progress.owned.join(',')+'|'+MASTERY.map(m=>rankOf(m.id)).join(',');
@@ -933,54 +948,99 @@ function aiThink(){
  const radiusCount=(arr,p,r)=>arr.filter(u=>dist(u,p)<r), power=arr=>arr.reduce((s,u)=>s+aiPower(u),0);
  const aggressive=doctrine==='raider'||doctrine==='swarm',cautious=doctrine==='defender';
  const preferences={expander:{neutral:80,attack:0,defense:15},raider:{neutral:15,attack:65,defense:-5},defender:{neutral:25,attack:-15,defense:70},swarm:{neutral:40,attack:30,defense:10},siege:{neutral:10,attack:30,defense:35}}[doctrine];
- // Strategic production: reinforce under threat; otherwise pick an army composition appropriate to doctrine.
+ // Adapt production to the actual hostile army, and assign independent orders
+ // to different forces. These are strategic heuristics, not hidden stat boosts.
+ const countTypes=(arr,type)=>arr.filter(u=>u.type===type).length;
+ const enemyTanks=countTypes(theirs,'square')+countTypes(theirs,'rectangle');
+ const enemyRanged=countTypes(theirs,'triangle'),enemyFast=countTypes(theirs,'cavalry');
+ const enemyLight=countTypes(theirs,'circle');
+ const myRanged=countTypes(mine,'triangle'),myShields=countTypes(mine,'square');
+ const myFast=countTypes(mine,'cavalry');
  for(const p of owned){
-  const friendly=radiusCount(mine,p,220),enemies=radiusCount(theirs,p,280),threat=power(enemies),guard=power(friendly);
-  const mix=theirs.filter(u=>dist(u,p)<390);const tanks=mix.filter(u=>u.type==='square'||u.type==='rectangle').length, ranged=mix.filter(u=>u.type==='triangle').length;
-  if(threat>guard*.75&&enemies.length>3)p.type=tanks>ranged?'triangle':'square';
-  else if(doctrine==='siege')p.type=mine.filter(u=>u.type==='rectangle').length<mine.length*.14?'rectangle':mine.filter(u=>u.type==='triangle').length<mine.length*.3?'triangle':'circle';
-  else if(doctrine==='defender')p.type=mine.filter(u=>u.type==='square').length<mine.length*.24?'square':'circle';
-  else if(doctrine==='raider')p.type=currentLevel>=20&&mine.filter(u=>u.type==='cavalry').length<mine.length*.18?'cavalry':mine.filter(u=>u.type==='triangle').length<mine.length*.28?'triangle':'circle';
-  else if(doctrine==='swarm'||doctrine==='expander')p.type='circle';
-  if(p.level<2&&friendly.length>=68&&threat<guard*.35&&elapsed>35){p.level=2;p.maxHp+=85;p.hp+=85;burst(p.x,p.y,1,10,.6)}
- }
- // Defend valuable threatened planets first. Leave an actual reserve rather than throwing every unit forward.
- const threatened=owned.map(p=>({p,threat:power(radiusCount(theirs,p,260)),defenders:power(radiusCount(mine,p,180))})).filter(t=>t.threat>t.defenders*.65&&t.threat>5).sort((a,b)=>b.threat/(b.defenders+1)-a.threat/(a.defenders+1));
- for(const emergency of threatened.slice(0,2)){
-  const reinforcements=mine.filter(u=>dist(u,emergency.p)>160&&dist(u,emergency.p)<590&&(!u.aiOrder||elapsed-u.aiOrder>7));
-  if(reinforcements.length>5){const needed=Math.ceil(Math.min(reinforcements.length*.65,Math.max(8,emergency.threat*1.15-emergency.defenders)));aiSend(reinforcements,emergency.p,needed)}
- }
- const targets=[...neutral,...foe];
- for(const p of owned){
-  const local=mine.filter(u=>dist(u,p)<265&&(!u.aiOrder||elapsed-u.aiOrder>7));
-  if(local.length<8)continue;
-  const availablePower=power(local),nearEnemy=power(radiusCount(theirs,p,250)),reserve=(cautious?17:aggressive?7:11)+nearEnemy*.55;
-  if(availablePower<reserve+7)continue;
-  let best=null,bestScore=-Infinity;
-  for(const t of targets){
-    const distance=dist(p,t),defenders=radiusCount(theirs,t,150),defPower=power(defenders),attackers=local.filter(u=>u.type!=='rectangle'),capturePower=power(attackers);
-    if(t.team===2&&attackers.length<5)continue;
-    if(t.team===0&&attackers.length<5)continue;
-    const effective=availablePower-reserve;
-    const attackCost=(t.team===2?12:22)+defPower*(t.team===2?.85:1.25)+(t.hp/t.maxHp)*10;
-    const tooHard=effective<attackCost*(difficulty==='easy'?1.35:difficulty==='hard'?.7:1);
-    const centerBonus=Math.max(0,1-Math.abs(t.x-W/2)/(W/2))*12;
-    const economyValue=t.team===2?28:16;
-    let score=85+(t.team===2?preferences.neutral:preferences.attack)+economyValue+centerBonus-distance*.055-defPower*.85;
-    if(t.team===0){score+=(1-t.hp/t.maxHp)*35;score+=t.level>1?11:0}
-    if(tooHard)score-=difficulty==='hard'?37:70;
-    // Slightly prefer the same rally direction to avoid pointless oscillation.
-    if(p.rally&&dist(p.rally,t)<65)score+=10;
-    if(score>bestScore){bestScore=score;best=t}
+  const pressure=power(radiusCount(theirs,p,320)),defenders=power(radiusCount(mine,p,220));
+  const local=theirs.filter(u=>dist(u,p)<440);
+  const tanks=countTypes(local,'square')+countTypes(local,'rectangle');
+  const ranged=countTypes(local,'triangle'),fast=countTypes(local,'cavalry');
+  let desired='circle';
+  if(pressure>defenders*.8&&pressure>5){
+   desired=tanks>ranged?'triangle':ranged+fast>tanks?'square':'circle';
+  }else if(enemyTanks>enemyLight*.42&&myRanged<mine.length*.32)desired='triangle';
+  else if(enemyRanged>enemyLight*.22&&myFast<mine.length*.20&&currentLevel>=20)desired='cavalry';
+  else if(enemyFast>enemyLight*.22&&myShields<mine.length*.28)desired='square';
+  else if(doctrine==='siege'&&countTypes(mine,'rectangle')<mine.length*.13)desired='rectangle';
+  else if(doctrine==='defender'&&myShields<mine.length*.25)desired='square';
+  else if(doctrine==='raider'&&currentLevel>=20&&myFast<mine.length*.16)desired='cavalry';
+  else if(doctrine==='swarm')desired='circle';
+  else if(doctrine==='expander')desired='circle';
+  else if(myRanged<mine.length*.16)desired='triangle';
+  // Avoid cycling production on every AI tick.
+  if(p.type!==desired&&(p.aiProductionSince===undefined||elapsed-p.aiProductionSince>9)){
+   p.type=desired;p.aiProductionSince=elapsed;
   }
-  if(!best||bestScore<0){p.rally=null;continue}
-  const adjacent=radiusCount(theirs,best,140),resist=power(adjacent);
-  const count=clamp(Math.ceil((best.team===2?12:21)+resist*1.2+(best.hp/best.maxHp)*8),9,Math.floor(local.length*(cautious?.58:.78)));
-  if(count<9)continue;
-  p.rally={x:best.x,y:best.y};
-  aiSend(local,best,count);
+  if(p.level<2&&radiusCount(mine,p,190).length>=62&&pressure<defenders*.4&&elapsed>35){
+   p.level=2;p.maxHp+=85;p.hp+=85;burst(p.x,p.y,1,10,.6);
+  }
  }
- // AI uses only the defined planets in each level; construction is disabled.
+ // Units can be allocated only once in a planning cycle.
+ const usableIds=new Set(mine.filter(u=>!u.aiOrder||elapsed-u.aiOrder>Math.max(3.5,7-currentLevel/70)).map(u=>u.id));
+ const available=arr=>arr.filter(u=>usableIds.has(u.id));
+ const dispatch=(arr,destination,count)=>{
+  const chosen=available(arr).sort((a,b)=>dist(a,destination)-dist(b,destination)).slice(0,count);
+  if(!chosen.length)return 0;
+  const sent=aiSend(chosen,destination,chosen.length);
+  chosen.forEach(u=>usableIds.delete(u.id));
+  return sent;
+ };
+ // Save struggling worlds by pulling reserves from other fronts.
+ const emergencies=owned.map(p=>({
+  p,attack:power(radiusCount(theirs,p,285)),guard:power(radiusCount(mine,p,180))
+ })).sort((a,b)=>(b.attack-b.guard)-(a.attack-a.guard));
+ for(const e of emergencies){
+  if(e.attack<8||e.attack<e.guard*.85)continue;
+  const reserves=available(mine.filter(u=>dist(u,e.p)>160&&dist(u,e.p)<680));
+  const needed=Math.min(reserves.length,Math.ceil(Math.max(7,e.attack-e.guard+5)));
+  if(needed>=5)dispatch(reserves,e.p,needed);
+ }
+ // Independently evaluate each staging planet, so attacks can split across fronts.
+ const objectives=[...neutral,...foe].map(p=>({
+  p,defense:power(radiusCount(theirs,p,175)),
+  value:p.team===0?57+p.level*13:44
+ }));
+ for(const origin of owned){
+  const local=available(mine.filter(u=>dist(u,origin)<350));
+  if(local.length<11)continue;
+  const powerHere=power(local);
+  const threatHere=power(radiusCount(theirs,origin,230));
+  const reserve=Math.max(5,Math.min(local.length*.55,threatHere*1.1+8));
+  const attackBudget=powerHere-reserve;
+  if(attackBudget<8)continue;
+  const options=objectives.map(obj=>{
+   const d=dist(origin,obj.p);
+   const support=power(radiusCount(mine,obj.p,190))*.4;
+   const defense=obj.defense+(obj.p.team===0?13:7);
+   const margin=attackBudget+support-defense;
+   const flank=Math.abs(obj.p.y-origin.y)>180?8:0;
+   const objectiveBias=(doctrine==='raider'&&obj.p.team===0?16:0)+
+     (doctrine==='expander'&&obj.p.team===2?15:0);
+   const undefended=obj.p.team===0&&obj.defense<8?24:0;
+   const score=obj.value+objectiveBias+flank+undefended-d*.09+
+     Math.min(26,margin*.7)-(margin<0?Math.min(75,-margin*2):0)+
+     (Math.random()-.5)*(currentLevel>=25?20:5);
+   return {obj,score,margin};
+  }).filter(x=>x.margin>-(difficulty==='hard'?7:2)).sort((a,b)=>b.score-a.score);
+  if(!options.length)continue;
+  // Alternate credible objectives to make the AI less deterministic.
+  const chosen=options.length>1&&currentLevel>=25&&Math.random()<.16&&options[1].margin>0?
+    options[1]:options[0];
+  if(chosen.score<5)continue;
+  const target=chosen.obj.p;
+  const num=Math.min(local.length-Math.ceil(reserve),
+    Math.ceil(15+chosen.obj.defense*1.3+8*target.hp/target.maxHp));
+  if(num<7)continue;
+  origin.rally={x:target.x,y:target.y};
+  dispatch(local,target,num);
+ }
+// AI uses only the defined planets in each level; construction is disabled.
 
 }
 
