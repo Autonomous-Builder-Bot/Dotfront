@@ -679,6 +679,7 @@ function fleetAiThink(){
  for(const [squadId,squad] of groups){
   const ready=squad.filter(u=>!u.aiOrder||elapsed-u.aiOrder>3.5);
   if(!ready.length)continue;
+  let attacking=ready;
   const x=squad.reduce((v,u)=>v+u.x,0)/squad.length,y=squad.reduce((v,u)=>v+u.y,0)/squad.length;
   const power=squad.reduce((v,u)=>v+aiPower(u),0);
   const threat=foe.filter(u=>Math.hypot(u.x-x,u.y-y)<175).reduce((v,u)=>v+aiPower(u),0);
@@ -689,6 +690,7 @@ function fleetAiThink(){
     x:clamp(x+100,35,W-35),y:clamp(y+(y<H/2?-45:45),35,H-35)
    },retreating.length);
    if(retreating.length===ready.length)continue;
+   attacking=ready.filter(u=>u.type==='rectangle');
   }
   const ranked=targets.map(t=>{
    const range=Math.hypot(t.x-x,t.y-y);
@@ -704,7 +706,7 @@ function fleetAiThink(){
   const offset=squadId===2?{x:gap>160?85:0,y:0}:
     squadId===3&&gap>220?{x:65,y:y<target.y?-85:85}:
     squadId===4&&gap>150?{x:50,y:0}:{x:0,y:0};
-  aiSend(ready,{x:clamp(target.x+offset.x,35,W-35),y:clamp(target.y+offset.y,35,H-35)},ready.length);
+  aiSend(attacking,{x:clamp(target.x+offset.x,35,W-35),y:clamp(target.y+offset.y,35,H-35)},attacking.length);
  }
 }
 let activeBattleDesign=null,bonusKey='',cachedBonuses=null;
