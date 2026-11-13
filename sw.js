@@ -1,6 +1,6 @@
-const CACHE='dotfront-app-v32';
+const CACHE='dotfront-app-v33';
 const ASSETS=['./','./index.html','./app.css?v=30','./ads.js?v=27',
-  './historical_missions.js?v=27','./app.js?v=32','./bootstrap.js?v=31',
+  './historical_missions.js?v=27','./app.js?v=33','./bootstrap.js?v=31',
   './version.json','./manifest.webmanifest','./icons/icon-192.png',
   './icons/icon-512.png','./icons/icon-180.png'];
 self.addEventListener('install',event=>{
