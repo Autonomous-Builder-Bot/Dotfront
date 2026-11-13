@@ -432,10 +432,124 @@ function mathMissionDesign(n,base){
   hint:base.hint+' Secure forward production worlds to shorten reinforcement travel.',
   mathematical:true};
 }
+
+/* Authored historical campaigns 1-100: fixed thematic blueprints + deterministic
+   spacing correction. Open space only: no invisible walls or terrain effects.
+   The historical reference is a tactical interpretation, not a scaled map. */
+const HISTORY_FORMS_TEXT={
+spine:'28:50 43:50 58:50 73:50 35:27 65:75 50:27 81:40 27:74 76:71',
+fork:'30:28 30:73 45:22 45:79 63:28 63:74 78:50 53:50 78:24 78:78',
+shield:'28:28 28:72 39:50 50:29 50:72 67:50 77:26 77:74 58:51 39:17',
+delta:'30:25 30:74 45:30 46:69 63:20 63:78 79:40 79:62 56:48 41:50',
+wedge:'28:50 44:35 44:65 61:24 61:77 72:50 55:50 29:24 29:76 81:22',
+coalition:'29:22 29:50 29:79 45:25 45:75 57:50 69:23 69:76 81:50 57:26',
+siege:'29:27 30:74 46:50 51:22 51:79 69:29 69:71 81:50 61:49 82:19',
+feint:'30:26 40:45 28:72 57:25 55:72 73:45 82:73 42:80 65:52 78:18',
+enclosure:'26:30 27:70 42:16 42:83 60:24 60:77 73:38 73:62 52:50 82:50',
+cross:'26:49 40:49 56:49 70:49 49:22 49:77 67:24 35:77 80:70 29:23',
+stagger:'26:25 40:39 56:25 70:40 30:65 45:80 60:63 77:79 54:48 78:19',
+split:'27:23 43:23 60:23 77:23 27:78 43:78 60:78 77:78 50:50 68:50',
+wings:'26:23 40:23 58:27 75:23 26:77 40:77 58:73 75:77 50:50 64:50',
+bastion:'26:36 26:66 43:29 43:71 58:50 73:35 73:67 55:22 55:80 84:50',
+columns:'28:25 42:25 60:25 75:25 30:50 47:50 64:50 80:50 28:77 45:77 63:77 80:77',
+pocket:'30:22 30:78 44:36 44:65 59:26 59:74 70:50 80:30 80:70 51:50',
+crescent:'30:20 44:22 59:29 72:43 72:64 59:77 43:79 30:65 48:50 81:24',
+counter:'29:39 29:67 46:49 55:26 57:77 72:40 79:67 42:20 68:20 45:79',
+double:'29:26 45:26 61:26 77:26 29:74 45:74 61:74 77:74 53:50 79:49',
+relay:'29:50 44:50 59:50 75:50 29:25 44:76 62:23 77:77 54:28 36:76',
+pinch:'28:25 44:33 60:44 75:50 28:76 44:68 60:58 46:50 73:22 73:78',
+hook:'30:20 46:20 62:28 75:41 72:62 61:77 43:76 29:62 49:51 83:76',
+ambush:'24:26 40:34 55:24 70:33 30:71 45:62 59:79 76:71 53:49 84:44',
+oblique:'26:66 37:49 49:32 61:19 73:37 75:72 58:68 42:78 32:21 57:47',
+surprise:'24:26 39:26 56:31 70:45 29:77 46:75 62:73 79:77 53:51 77:23',
+hammer:'28:22 43:23 59:28 73:43 27:76 43:77 59:71 73:62 49:50 80:20',
+diamond:'31:25 49:17 67:26 80:48 68:74 50:84 32:73 21:50 51:50 81:20',
+flank:'27:23 45:27 63:22 79:34 30:70 45:74 61:67 79:74 57:45 28:46',
+ring:'28:50 39:25 58:17 75:28 80:51 74:74 57:83 38:74 53:49 67:50',
+doubleRing:'27:49 38:21 58:16 78:28 82:50 77:73 57:85 38:76 53:50 67:49 45:41 45:61',
+phalanx:'28:33 28:52 28:71 43:33 43:52 43:71 61:33 61:52 61:71 77:52 79:26 79:77',
+supply:'28:39 43:39 58:39 74:39 28:73 44:73 60:73 76:73 50:19 69:19',
+bridge:'28:31 43:50 60:50 76:50 28:73 43:24 60:76 76:24 53:28 52:73',
+doubleWall:'30:25 30:49 30:74 45:25 45:49 45:74 62:25 62:49 62:74 79:25 79:49 79:74',
+relief:'29:29 29:73 46:51 60:26 60:76 76:49 77:21 77:78 45:20 46:80',
+envelope:'27:22 41:22 56:28 71:38 71:62 56:74 41:78 27:78 48:49 81:50'
+};
+const HISTORY_FORMS=Object.fromEntries(Object.entries(HISTORY_FORMS_TEXT).map(([key,str])=>[key,str.split(' ').map(p=>p.split(':').map(Number).map(v=>v/100))]));
+function historicalBattleDesign(n,base){
+ const data=window.DotfrontHistoryData;
+ const entry=Array.isArray(data)?data[n-1]:null;
+ if(!entry||entry.level!==n)return null;
+ if(n<=20){
+  return {...base,title:entry.name,hint:base.hint+' Tactical inspiration: '+entry.lesson,
+   historical:true,history:entry.name,authored:true};
+ }
+ const t=clamp((n-20)/(CAMPAIGN_SIZE-20),0,1);
+ const worldWidth=Math.round(BASE_W*(1+.55*t)),worldHeight=Math.round(BASE_H*(1+.45*t));
+ const count=10+Math.floor(10*t);
+ const rng=seeded((Math.imul(n,90563)+41427)>>>0);
+ const oneSide=.44+((n*3)%5-2)*.025,otherSide=.56-((n*7)%5-2)*.025;
+ const flipX=n%11===0,flipY=n%3===0;
+ const W0=worldWidth,H0=worldHeight;
+ const points=[
+  [Math.round((flipX?.87:.13)*W0),Math.round(oneSide*H0),0,38,'HOME'],
+  [Math.round((flipX?.13:.87)*W0),Math.round(otherSide*H0),1,38,'HOSTILE']
+ ];
+ const entries=HISTORY_FORMS[entry.motif];
+ if(!entries)throw Error('Missing historical formation '+entry.motif);
+ const roles=['VANGUARD','UPPER WING','LOWER WING','RELAY','FLANK','RESERVE','CENTER','FAR SIDE','SUPPLY','OUTPOST','CROWN','BACK LINE','HINTERLAND','NEXUS','OUTER ORBIT','INNER ORBIT'];
+ const sep=127;
+ const place=(x0,y0,name,noise)=>{
+  const fx=flipX?1-x0:x0,fy=flipY?1-y0:y0;
+  const x=Math.round(clamp((fx+(rng()-.5)*noise)*W0,94,W0-94));
+  const y=Math.round(clamp((fy+(rng()-.5)*noise)*H0,94,H0-94));
+  if(points.every(p=>Math.hypot(p[0]-x,p[1]-y)>=sep)){
+   points.push([x,y,2,26+Math.floor(rng()*6),name]);return true;
+  }
+  return false;
+ };
+ for(let i=0;i<entries.length&&points.length<count;i++){
+  const p=entries[i],role=roles[i%roles.length];
+  if(place(p[0],p[1],role,.012))continue;
+  for(let j=0;j<50;j++){
+   const theta=j*2.399963+n*.11,radius=.035+.008*Math.floor(j/4);
+   if(place(p[0]+Math.cos(theta)*radius,p[1]+Math.sin(theta)*radius,role,.003))break;
+  }
+ }
+ for(let j=0;points.length<count&&j<5000;j++){
+  const fx=.20+.60*((j*.61803398875+n*.137)%1);
+  const fy=.13+.74*((j*.754877666+n*.211)%1);
+  place(fx,fy,roles[(j+entries.length)%roles.length],0);
+ }
+ if(points.length!==count)throw Error('Incomplete historic mission '+n);
+ const hq=points[0],foe=points[1];
+ const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+ const setOwner=(team,forward)=>{
+  const candidates=points.slice(2).filter(p=>p[2]===2);
+  const home=team===0?hq:foe,other=team===0?foe:hq;
+  const score=p=>forward?distance(p,other)-distance(p,home):distance(p,home);
+  candidates.sort((a,b)=>score(a)-score(b));
+  if(candidates[0])candidates[0][2]=team;
+ };
+ if(['blue','both','relief'].includes(entry.stance))setOwner(0,entry.stance==='relief');
+ if(['red','both','red2','relief'].includes(entry.stance))setOwner(1,entry.stance==='red2');
+ if(entry.stance==='red2')setOwner(1,false);
+ const starter=Math.round(44+24*t)+(entry.stance==='red2'?2:0);
+ const extraBoss=n%20===0?3+2*Math.floor(n/20):0;
+ const enemyStarter=Math.round(starter*(.92+.30*t))+(entry.stance==='red2'?-2:0)+extraBoss;
+ return {...base,worldWidth,worldHeight,setups:points,starter,enemyStarter,
+  aiStyle:entry.ai,title:entry.name,hint:entry.lesson,
+  historical:true,history:entry.name,authored:true,geometry:entry.motif};
+}
 const proceduralLevelDesign=levelDesign;
 levelDesign=function(n){
  const base=proceduralLevelDesign(n);
- if(n<=OPENING_MISSIONS.length){const o=OPENING_MISSIONS[n-1];return {...base,worldWidth:BASE_W,worldHeight:BASE_H,setups:o.sites.map(s=>s.slice()),starter:o.start,enemyStarter:o.foe,aiStyle:o.style,title:'First Contact · '+o.name,hint:o.hint,handcrafted:true};}
+ if(n<=OPENING_MISSIONS.length){
+  const o=OPENING_MISSIONS[n-1],opening={...base,worldWidth:BASE_W,worldHeight:BASE_H,
+   setups:o.sites.map(s=>s.slice()),starter:o.start,enemyStarter:o.foe,aiStyle:o.style,
+   title:'First Contact · '+o.name,hint:o.hint,handcrafted:true};
+  return historicalBattleDesign(n,opening)||opening;
+ }
+ if(n<=100){const historic=historicalBattleDesign(n,base);if(historic)return historic}
  return mathMissionDesign(n,base);
 };
 
@@ -527,8 +641,8 @@ function renderTechTree(){
 }
 function showMenu(tab='play'){menuTab=tab;paused=true;$('pause').textContent='▶ Resume';$('overlay').classList.remove('hidden');tutorialRender();$('modal').classList.toggle('techMode',tab==='upgrades');let d=levelDesign(currentLevel),nav=`<div class="modalNav"><button class="button ${tab==='play'?'active':''}" data-tab="play">Campaign</button><button class="button ${tab==='upgrades'?'active':''}" data-tab="upgrades">Upgrade tree</button><button class="button ${tab==='levels'?'active':''}" data-tab="levels">Levels</button></div>`,body='';
 if(tab==='upgrades'){body=renderTechTree()}
-else if(tab==='levels'){body=`<p>Select any unlocked level. Completed levels are marked ✓.</p><div id="levelChooser">${Array.from({length:CAMPAIGN_SIZE},(_,i)=>{let n=i+1,done=progress.completed.includes(n);return `<button class="button ${done?'done':''} ${n===currentLevel?'active':''}" data-level="${n}" ${n>progress.unlocked?'disabled':''}>${done?'✓ ':''}${n}</button>`}).join('')}</div>`}
-else body=`<div class="campaignInfo"><b>Level ${currentLevel} / ${CAMPAIGN_SIZE} — ${d.title}</b><br>${d.hint}<br>Enemy strategy: ${d.aiStyle} · ${d.setups.length} planets · Completed: ${progress.completed.length}/${CAMPAIGN_SIZE}<br><span class="subtle">Each level has a repeatable, seeded layout. The enemy evolves over the campaign.</span></div><label id="difficultyLabel" for="difficulty">ENEMY DIFFICULTY</label><select id="difficulty"><option value="easy">Easy — slower AI, 18s head start</option><option value="normal">Normal — balanced, 6s head start</option><option value="hard">Hard — faster AI, no head start</option></select>`;
+else if(tab==='levels'){body=`<p>Select any unlocked level. Completed levels are marked ✓.</p><div id="levelChooser">${Array.from({length:CAMPAIGN_SIZE},(_,i)=>{let n=i+1,done=progress.completed.includes(n);let name=window.DotfrontHistoryData?.[i]?.name||'Level '+n;return `<button class="button ${done?'done':''} ${n===currentLevel?'active':''}" data-level="${n}" title="${name}" aria-label="Level ${n}: ${name}" ${n>progress.unlocked?'disabled':''}>${done?'✓ ':''}${n}</button>`}).join('')}</div>`}
+else body=`<div class="campaignInfo"><b>Level ${currentLevel} / ${CAMPAIGN_SIZE} — ${d.title}</b><br>${d.hint}<br>Enemy strategy: ${d.aiStyle} · ${d.setups.length} planets · Completed: ${progress.completed.length}/${CAMPAIGN_SIZE}<br><span class="subtle">${d.historical?'Historically inspired strategy, adapted to unrestricted space.':'Deterministic strategic map.'} The enemy evolves over the campaign.</span></div><label id="difficultyLabel" for="difficulty">ENEMY DIFFICULTY</label><select id="difficulty"><option value="easy">Easy — slower AI, 18s head start</option><option value="normal">Normal — balanced, 6s head start</option><option value="hard">Hard — faster AI, no head start</option></select>`;
 $('modal').innerHTML=`<h2>DOTFRONT</h2>${nav}${body}<div class="modalNav"><button class="button" id="resumeGame">${menuFromPause&&!finished?'RESUME':'CLOSE'}</button><button class="button" id="restartLevel">↺ RESTART LEVEL</button><button class="button" id="playLevel">▶ ${currentLevel===progress.unlocked&&!progress.completed.includes(currentLevel)?"CONTINUE":"PLAY"} LEVEL ${currentLevel}</button></div><div class="modalNav"><button class="button" id="tutorialReplay">? TUTORIAL</button><button class="button" id="exportSave">Export save</button><button class="button" id="importSave">Import save</button><input id="saveFile" type="file" accept="application/json,.json" style="display:none"></div>`;
 $('tutorialReplay').onclick=()=>{const resume=!finished&&planets.length>0;if(resume){$('overlay').classList.add('hidden');paused=false;$('pause').textContent='Ⅱ Pause'}else startLevel();tutorialStart(true)};
 $('exportSave').onclick=exportProgress;$('importSave').onclick=()=>$('saveFile').click();$('saveFile').onchange=e=>{const file=e.target.files?.[0];if(file)importProgress(file)};
