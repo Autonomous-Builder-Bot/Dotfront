@@ -881,6 +881,7 @@ zoomFactor=Math.min(7,1+Math.max(0,W/BASE_W-1)*(innerWidth<700?1.65:1.35));
 cameraX=design.fleetBattle?W/2:(setups[0]?.[0]||W/2);
 cameraY=design.fleetBattle?H/2:(setups[0]?.[1]||H/2);
 resize();
+const minimap=$('minimap');if(minimap)minimap.hidden=W<1950;
 if(design.fleetBattle){
  spawnFleetFormation(design,0,design.starter+(hasMod('doc_swarm_wave')?8:0));
  spawnFleetFormation(design,1,design.enemyStarter);
@@ -1179,6 +1180,35 @@ function dismissToast(){toastTimer=0;$('toast').classList.remove('show')}
 function toast(s){if(tutorialActive){dismissToast();return}$('toastText').textContent=s;$('toast').classList.add('show');toastTimer=2.4}
 $('toastDismiss').addEventListener('click',e=>{e.stopPropagation();dismissToast()});$('toast').addEventListener('click',dismissToast);
 function drawGlow(x,y,r,color,alpha=.2){let grd=g.createRadialGradient(x,y,0,x,y,r);grd.addColorStop(0,color);grd.addColorStop(1,'transparent');g.save();g.globalAlpha=alpha;g.fillStyle=grd;g.beginPath();g.arc(x,y,r,0,Math.PI*2);g.fill();g.restore()}
+function drawMinimap(){
+ const panel=$('minimap');
+ if(!panel||panel.hidden)return;
+ const ctx=panel.getContext('2d'),mw=panel.width,mh=panel.height,pad=7;
+ const mx=x=>pad+(x/W)*(mw-pad*2),my=y=>pad+(y/H)*(mh-pad*2);
+ ctx.clearRect(0,0,mw,mh);
+ ctx.fillStyle='#071323';ctx.fillRect(0,0,mw,mh);
+ ctx.strokeStyle='#54748b';ctx.lineWidth=1;
+ ctx.strokeRect(pad,pad,mw-pad*2,mh-pad*2);
+ // Tiny unit markers reveal active fronts without cluttering the map.
+ const stride=units.length>700?5:units.length>350?3:2;
+ for(let i=0;i<units.length;i+=stride){
+  const u=units[i];if(u.dead)continue;
+  ctx.fillStyle=u.team===0?'#57cfff':'#f06d8d';
+  ctx.fillRect(mx(u.x)-.6,my(u.y)-.6,1.2,1.2);
+ }
+ for(const p of planets){
+  ctx.fillStyle=p.team===0?'#57d3ff':p.team===1?'#ff7894':'#a3b0c7';
+  ctx.beginPath();ctx.arc(mx(p.x),my(p.y),p.team===2?2.5:3.4,0,Math.PI*2);ctx.fill();
+ }
+ if(zoomFactor>1.001){
+  const v=[s2p(0,0),s2p(width,0),s2p(width,height),s2p(0,height)];
+  ctx.strokeStyle='#f9e5a9';ctx.lineWidth=1.5;
+  ctx.strokeRect(mx(clamp(Math.min(...v.map(p=>p.x)),0,W)),
+   my(clamp(Math.min(...v.map(p=>p.y)),0,H)),
+   Math.max(2,Math.min(mw-2*pad,(Math.max(...v.map(p=>p.x))-Math.min(...v.map(p=>p.x)))/W*(mw-pad*2))),
+   Math.max(2,Math.min(mh-2*pad,(Math.max(...v.map(p=>p.y))-Math.min(...v.map(p=>p.y)))/H*(mh-pad*2))));
+ }
+}
 function render(){g.setTransform(dpr,0,0,dpr,0,0);if(starBackground)g.drawImage(starBackground,0,0,width,height);else{g.fillStyle='#050919';g.fillRect(0,0,width,height)}g.save();g.beginPath();g.rect(0,0,width,height);g.clip();g.lineWidth=.6;g.strokeStyle='#5e88bc12';for(let x=0;x<=W;x+=100){let a=p2s(x,0),b=p2s(x,H);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}for(let y=0;y<=H;y+=100){let a=p2s(0,y),b=p2s(W,y);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke()}g.restore();
 // planetary shadows and target lines
 for(const p of planets){let a=p2s(p.x,p.y);if(p.rally){let b=p2s(p.rally.x,p.rally.y);g.save();g.strokeStyle=p.team===0?'#85dfff77':'#ff748855';g.lineWidth=1.4;g.setLineDash([5,6]);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();g.setLineDash([]);g.beginPath();g.arc(b.x,b.y,7,0,6.283);g.stroke();g.restore()}g.fillStyle='#00000077';g.beginPath();g.ellipse(a.x+2,a.y+11*scale,p.r*scale*1.22,p.r*scale*.32,0,0,6.283);g.fill()}
@@ -1187,7 +1217,7 @@ for(const p of planets){let a=p2s(p.x,p.y,12),r=Math.max(8,p.r*scale),col=color(
 for(const u of units){let a=p2s(u.x,u.y,8+Math.sin(u.bob)*3),r=tutorialActive?Math.max(6,6.4*scale):Math.max(2.2,3.3*scale),col=color(u.team);if(u.shieldWall&&dist(u,u.shieldWall)<28){g.strokeStyle='#a1ecff99';g.lineWidth=2;g.beginPath();g.arc(a.x,a.y,r*2.9,0,6.283);g.stroke()}if(selected.has(u)){g.strokeStyle='#b9f9ffba';g.lineWidth=1;g.beginPath();g.ellipse(a.x,a.y+4,r*2.4,r*1.1,0,0,6.283);g.stroke()}drawGlow(a.x,a.y,r*4,col,.14);g.save();g.translate(a.x,a.y);g.fillStyle=col;g.shadowColor=col;g.shadowBlur=6;if(u.type==='square'){g.fillRect(-r*1.3,-r*1.3,r*2.6,r*2.6);g.fillStyle='#071e31';g.fillRect(-r*.62,-r*.62,r*1.24,r*1.24)}else if(u.type==='cavalry'){g.rotate(u.angle||0);g.beginPath();g.moveTo(-r*1.4,-r*1.3);g.lineTo(-r*.15,-r*1.3);g.lineTo(r*1.6,0);g.lineTo(-r*.15,r*1.3);g.lineTo(-r*1.4,r*1.3);g.lineTo(-r*.08,0);g.closePath();g.fill()}else if(u.type==='rectangle'){g.rotate(u.angle||0);g.fillRect(-r*1.9,-r*.83,r*3.8,r*1.66);g.fillStyle='#ffffff77';g.fillRect(r*.55,-r*.6,r*.55,r*.35)}else if(u.type==='triangle'){g.beginPath();g.moveTo(0,-r*1.55);g.lineTo(r*1.32,r*.95);g.lineTo(-r*1.32,r*.95);g.closePath();g.fill()}else{g.beginPath();g.arc(0,0,r*1.1,0,6.283);g.fill()}g.shadowBlur=0;g.fillStyle='#ffffffbb';g.beginPath();g.arc(-r*.28,-r*.34,r*.36,0,6.283);g.fill();g.restore()}
 for(const l of lasers){let a=p2s(l.x1,l.y1,10),b=p2s(l.x2,l.y2,10);g.save();g.globalAlpha=l.life/l.max;g.strokeStyle=color(l.team);g.shadowColor=color(l.team);g.shadowBlur=9;g.lineWidth=Math.max(1,1.4*scale);g.beginPath();g.moveTo(a.x,a.y);g.lineTo(b.x,b.y);g.stroke();g.strokeStyle='#f9ffff';g.lineWidth=.65;g.stroke();g.restore()}
 for(const p of particles){let a=p2s(p.x,p.y,p.vz*(1-p.life));g.save();g.globalAlpha=clamp(p.life*2.4,0,1);g.fillStyle=color(p.team);g.beginPath();g.arc(a.x,a.y,p.size*scale,0,6.283);g.fill();g.restore()}
-tutorialDrawTargets();if(drag&&drag.active&&!drag.wall){let a=drag.start,b=drag.end;g.strokeStyle='#99eeff';g.fillStyle='#65d8ff1a';g.lineWidth=1;g.setLineDash([6,4]);g.fillRect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));g.strokeRect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));g.setLineDash([])}if(wallPlacement&&drag&&drag.wall){g.save();g.strokeStyle='#9eefff';g.lineWidth=4;g.lineCap='round';g.setLineDash([8,5]);g.beginPath();g.moveTo(drag.start.x,drag.start.y);g.lineTo(drag.end.x,drag.end.y);g.stroke();g.restore()} }
+tutorialDrawTargets();drawMinimap();if(drag&&drag.active&&!drag.wall){let a=drag.start,b=drag.end;g.strokeStyle='#99eeff';g.fillStyle='#65d8ff1a';g.lineWidth=1;g.setLineDash([6,4]);g.fillRect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));g.strokeRect(Math.min(a.x,b.x),Math.min(a.y,b.y),Math.abs(b.x-a.x),Math.abs(b.y-a.y));g.setLineDash([])}if(wallPlacement&&drag&&drag.wall){g.save();g.strokeStyle='#9eefff';g.lineWidth=4;g.lineCap='round';g.setLineDash([8,5]);g.beginPath();g.moveTo(drag.start.x,drag.start.y);g.lineTo(drag.end.x,drag.end.y);g.stroke();g.restore()} }
 
 function tutorialDrawTargets(){
  if(!tutorialActive||tutorialStepDone||paused)return;
@@ -1318,6 +1348,16 @@ $('zoomOut').onclick=()=>zoomBy(1/1.25);
 const fitMap=$('fitMap');if(fitMap)fitMap.onclick=()=>{
  zoomFactor=1;cameraX=W/2;cameraY=H/2;refreshCamera();
 };
+const minimapControl=$('minimap');
+if(minimapControl)minimapControl.addEventListener('pointerdown',e=>{
+ if(!$('overlay').classList.contains('hidden'))return;
+ e.preventDefault();e.stopPropagation();
+ const bounds=minimapControl.getBoundingClientRect();
+ cameraX=clamp((e.clientX-bounds.left-7)/(bounds.width-14)*W,0,W);
+ cameraY=clamp((e.clientY-bounds.top-7)/(bounds.height-14)*H,0,H);
+ if(zoomFactor<1.1)zoomFactor=Math.min(3,1+Math.max(0,W/BASE_W-1)*1.1);
+ refreshCamera();
+});
 c.addEventListener('wheel',e=>{if(!$('overlay').classList.contains('hidden'))return;e.preventDefault();zoomBy(e.deltaY<0?1.25:1/1.25)},{passive:false});
 setGameSpeed(speedIndex);
 $('menu').onclick=()=>{menuFromPause=true;showMenu('play')};
