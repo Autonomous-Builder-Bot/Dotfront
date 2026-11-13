@@ -907,7 +907,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-activeBattleDesign=null;bonusKey='';cachedBonuses=null;enemyStatsCache=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;
+activeBattleDesign=null;bonusKey='';cachedBonuses=null;enemyStatsCache=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,anchor:null};
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
 activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;// Keep the opening battlefield legible on large maps rather than shrinking
@@ -1186,8 +1186,114 @@ function enemyUseAbilities(owned,foe,theirs){
  }else nextAiAbility=elapsed+10;
 }
 
+
+/* Campaign-wide AI fallback: when behind in military power and production,
+   consolidate available troops and commit to a final coordinated push.
+   This never grants units or stat bonuses, and never orders rectangles to fall back. */
+let aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,anchor:null};
+function aiLastStandThink(){
+ const fleet=!!activeBattleDesign?.fleetBattle;
+ const mine=units.filter(u=>u.team===1&&!u.dead);
+ const theirs=units.filter(u=>u.team===0&&!u.dead);
+ if(!mine.length||!theirs.length)return false;
+ const upgrades=levelBonuses(),enemyTech=enemyChallenge();
+ const force=arr=>arr.reduce((sum,u)=>{
+  const baseHp=specs[u.type].hp;
+  const hpFactor=u.maxHp/baseHp;
+  const damageFactor=u.team===0?upgrades.damage:enemyTech.damage;
+  const twin=u.team===0&&u.type==='triangle'&&hasMod('expansion1')?1.4:1;
+  return sum+aiPower(u)*hpFactor*damageFactor*twin;
+ },0);
+ const strength=force(mine),opposition=force(theirs);
+ const owned=planets.filter(p=>p.team===1),humanWorlds=planets.filter(p=>p.team===0);
+ const output=team=>planets.filter(p=>p.team===team).reduce((sum,p)=>{
+  const modifier=team===1?
+    aiConfig[difficulty].production*upgrades.aiScale*enemyTech.production:upgrades.prod;
+  return sum+modifier*(p.level>1?1.35:1)/productionPeriod(p);
+ },0);
+ const economy=fleet?0:output(1),theirEconomy=fleet?0:output(0);
+ const militaryRatio=(strength+1)/(opposition+1);
+ const scoreRatio=(strength+economy*12+2)/(opposition+theirEconomy*12+2);
+ const trigger=difficulty==='easy'?.53:difficulty==='hard'?.76:.69;
+ const severe=militaryRatio<.40&&scoreRatio<.72;
+ const losing=scoreRatio<trigger&&militaryRatio<.85&&
+  (fleet||economy<theirEconomy*1.25||militaryRatio<.52);
+ if(aiLastStand.phase==='normal'){
+  if(elapsed<(fleet?11:28)||!losing&&!severe){
+   aiLastStand.belowSince=null;
+   return false;
+  }
+  if(aiLastStand.belowSince===null)aiLastStand.belowSince=elapsed;
+  if(!severe&&elapsed-aiLastStand.belowSince<4)return false;
+  aiLastStand.phase=severe?'assault':'rally';
+  aiLastStand.started=elapsed;
+  aiLastStand.targetId=null;
+  aiLastStand.nextOrder=0;
+  // Median position is resistant to a few isolated or retreating units.
+  const xs=mine.map(u=>u.x).sort((a,b)=>a-b);
+  const ys=mine.map(u=>u.y).sort((a,b)=>a-b);
+  aiLastStand.rally={
+   x:clamp(xs[Math.floor(xs.length/2)],45,W-45),
+   y:clamp(ys[Math.floor(ys.length/2)],45,H-45)
+  };
+  toast('Enemy forces are preparing a last stand!');
+ }
+ const rally=aiLastStand.rally;
+ const attackPoint=()=>{
+  if(!fleet){
+   const keep=humanWorlds.find(p=>p.id===aiLastStand.targetId);
+   if(keep)return keep;
+   const ranked=humanWorlds.map(p=>{
+    const defenders=theirs.filter(u=>dist(u,p)<195)
+      .reduce((sum,u)=>sum+aiPower(u),0);
+    const distance=dist(rally,p);
+    return {p,score:distance*.10+defenders*1.8-p.level*12};
+   }).sort((a,b)=>a.score-b.score);
+   const chosen=ranked[0]?.p;
+   aiLastStand.targetId=chosen?.id??null;
+   return chosen||null;
+  }
+  const clusters=new Map();
+  for(const u of theirs){
+   const k=u.squad??Math.floor(u.y/(H/5));
+   if(!clusters.has(k))clusters.set(k,[]);
+   clusters.get(k).push(u);
+  }
+  const ranked=[...clusters.values()].map(group=>{
+   const x=group.reduce((sum,u)=>sum+u.x,0)/group.length;
+   const y=group.reduce((sum,u)=>sum+u.y,0)/group.length;
+   return {x,y,score:dist(rally,{x,y})+group.length*3};
+  }).sort((a,b)=>a.score-b.score);
+  return ranked[0]||theirs[0];
+ };
+ const target=attackPoint();
+ if(!target)return false;
+ if(aiLastStand.phase==='rally'){
+  const formed=mine.filter(u=>dist(u,rally)<250).length/mine.length;
+  const enemyClose=theirs.some(u=>dist(u,rally)<215);
+  const deadline=10+Math.min(9,W/600);
+  if(formed>=.68||enemyClose||elapsed-aiLastStand.started>=deadline){
+   aiLastStand.phase='assault';aiLastStand.nextOrder=0;
+  }
+ }
+ if(elapsed>=aiLastStand.nextOrder){
+  if(aiLastStand.phase==='rally'){
+   const gathering=mine.filter(u=>u.type!=='rectangle'&&dist(u,rally)>85);
+   if(gathering.length)aiSend(gathering,rally,gathering.length);
+   // Heavy rectangles press forward even while other squads assemble.
+   const heavy=mine.filter(u=>u.type==='rectangle');
+   if(heavy.length)aiSend(heavy,target,heavy.length);
+  }else{
+   // Commit every surviving unit, including previous guards and reserves.
+   aiSend(mine,target,mine.length);
+  }
+  aiLastStand.nextOrder=elapsed+(aiLastStand.phase==='rally'?4.5:3.5);
+ }
+ return true;
+}
+
 function aiThink(){
- if(activeBattleDesign?.fleetBattle){fleetAiThink();return}
+ if(activeBattleDesign?.fleetBattle){if(!aiLastStandThink())fleetAiThink();return}
  const doctrine=levelBonuses().design.aiStyle,owned=planets.filter(p=>p.team===1),foe=planets.filter(p=>p.team===0),neutral=planets.filter(p=>p.team===2),mine=units.filter(u=>u.team===1&&!u.dead),theirs=units.filter(u=>u.team===0&&!u.dead);
  if(!owned.length||!foe.length)return;
  const radiusCount=(arr,p,r)=>arr.filter(u=>dist(u,p)<r), power=arr=>arr.reduce((s,u)=>s+aiPower(u),0);
@@ -1227,7 +1333,7 @@ function aiThink(){
   }
  }
  enemyUseAbilities(owned,foe,theirs);
- planetSquadThink(owned,foe,neutral,mine,theirs,doctrine);
+ if(!aiLastStandThink())planetSquadThink(owned,foe,neutral,mine,theirs,doctrine);
  // AI uses only the defined planets in each level; construction is disabled.
 
 }
