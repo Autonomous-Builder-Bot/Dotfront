@@ -466,3 +466,17 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
    Explicitly restore mouse/touch input after moving it out of #tools. */
 #actions > #production.show{pointer-events:auto}
 #actions > #production.show .button{pointer-events:auto}
+
+/* Large-campaign navigation: a compact interactive strategic overview. */
+#minimap{position:absolute;inset:auto;top:106px;right:12px;
+ width:160px;height:98px;border:1px solid #597da5a8;border-radius:9px;
+ box-shadow:0 7px 25px #0009;background:#071323e8;
+ pointer-events:auto;touch-action:none;cursor:crosshair;z-index:4}
+#minimap[hidden]{display:none!important}
+#fitMap{font-size:21px!important}
+@media(max-width:700px){
+ #minimap{top:113px;right:8px;width:118px;height:73px;opacity:.85}
+}
+@media(orientation:landscape) and (max-height:500px){
+ #minimap{top:47px;right:7px;width:105px;height:65px;opacity:.8}
+}
