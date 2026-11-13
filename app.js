@@ -907,7 +907,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-activeBattleDesign=null;bonusKey='';cachedBonuses=null;enemyStatsCache=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,anchor:null};
+activeBattleDesign=null;bonusKey='';cachedBonuses=null;enemyStatsCache=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;nextAiAbility=10;aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,recoveredSince:null,cooldownUntil:0};
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
 activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;// Keep the opening battlefield legible on large maps rather than shrinking
@@ -1190,7 +1190,7 @@ function enemyUseAbilities(owned,foe,theirs){
 /* Campaign-wide AI fallback: when behind in military power and production,
    consolidate available troops and commit to a final coordinated push.
    This never grants units or stat bonuses, and never orders rectangles to fall back. */
-let aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,anchor:null};
+let aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,targetId:null,nextOrder:0,recoveredSince:null,cooldownUntil:0};
 function aiLastStandThink(){
  const fleet=!!activeBattleDesign?.fleetBattle;
  const mine=units.filter(u=>u.team===1&&!u.dead);
@@ -1219,6 +1219,7 @@ function aiLastStandThink(){
  const losing=scoreRatio<trigger&&militaryRatio<.85&&
   (fleet||economy<theirEconomy*1.25||militaryRatio<.52);
  if(aiLastStand.phase==='normal'){
+  if(elapsed<aiLastStand.cooldownUntil)return false;
   if(elapsed<(fleet?11:28)||!losing&&!severe){
    aiLastStand.belowSince=null;
    return false;
@@ -1237,6 +1238,19 @@ function aiLastStandThink(){
    y:clamp(ys[Math.floor(ys.length/2)],45,H-45)
   };
   toast('Enemy forces are preparing a last stand!');
+ }else{
+  // Once the AI genuinely recovers its military and economy, switch back
+  // to normal multi-front strategy. Hysteresis prevents constant mode changes.
+  const recovered=scoreRatio>1.10&&militaryRatio>1.04&&
+   (fleet||economy>theirEconomy*.87);
+  if(recovered){
+   if(aiLastStand.recoveredSince===null)aiLastStand.recoveredSince=elapsed;
+   if(elapsed-aiLastStand.recoveredSince>=8&&elapsed-aiLastStand.started>=12){
+    aiLastStand={phase:'normal',belowSince:null,started:0,rally:null,
+     targetId:null,nextOrder:0,recoveredSince:null,cooldownUntil:elapsed+22};
+    return false;
+   }
+  }else aiLastStand.recoveredSince=null;
  }
  const rally=aiLastStand.rally;
  const attackPoint=()=>{
