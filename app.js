@@ -683,8 +683,12 @@ function fleetAiThink(){
   const power=squad.reduce((v,u)=>v+aiPower(u),0);
   const threat=foe.filter(u=>Math.hypot(u.x-x,u.y-y)<175).reduce((v,u)=>v+aiPower(u),0);
   if(currentLevel>=15&&threat>power*1.65&&(squadId===2||squad.length<4)){
-   aiSend(ready,{x:clamp(x+100,35,W-35),y:clamp(y+(y<H/2?-45:45),35,H-35)},ready.length);
-   continue;
+   // Slow, armored rectangles never withdraw. Other units may fall back.
+   const retreating=ready.filter(u=>u.type!=='rectangle');
+   if(retreating.length)aiSend(retreating,{
+    x:clamp(x+100,35,W-35),y:clamp(y+(y<H/2?-45:45),35,H-35)
+   },retreating.length);
+   if(retreating.length===ready.length)continue;
   }
   const ranked=targets.map(t=>{
    const range=Math.hypot(t.x-x,t.y-y);
@@ -1128,14 +1132,25 @@ function planetSquadThink(owned,foe,neutral,mine,theirs,doctrine){
     }else destination={x:selected.x,y:selected.y};
    }
   }
+  let advancing=members;
   if(threatened&&mode!=='defend'){
    const home=owned.slice().sort((a,b)=>dist(a,q)-dist(b,q))[0];
-   if(home&&dist(home,q)<500){destination={x:home.x,y:home.y};selected=home;staging=false}
+   if(home&&dist(home,q)<500){
+    // Retreat only mobile units. Rectangles keep their current assault
+    // objective rather than making a slow, wasteful trip back to base.
+    const withdrawing=members.filter(u=>u.type!=='rectangle');
+    advancing=members.filter(u=>u.type==='rectangle');
+    if(withdrawing.length)aiSend(withdrawing,home,withdrawing.length);
+    if(!advancing.length){
+     q.objective=home.id;q.lastPlan=elapsed;q.lastOrder=elapsed;q.staging=false;
+     continue;
+    }
+   }
   }
   if(destination){
    const changed=q.objective!==selected?.id||q.staging!==staging;
    if(changed||idle||threatened){
-    aiSend(members,destination,members.length);
+    aiSend(advancing,destination,advancing.length);
     q.lastOrder=elapsed;
    }
    q.objective=selected?.id??null;
