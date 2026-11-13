@@ -461,3 +461,8 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
   #actions > #production.show::before{display:none}
   #actions:has(> #production.show) > #tools{padding-bottom:4px}
 }
+
+/* The production picker is a direct child of #hud, whose pointer events are disabled.
+   Explicitly restore mouse/touch input after moving it out of #tools. */
+#actions > #production.show{pointer-events:auto}
+#actions > #production.show .button{pointer-events:auto}
