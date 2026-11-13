@@ -841,7 +841,7 @@ function rebuildStarBackground(){
 }
 function p2s(x,y,z=0){return{x:ox+(x+(y-H/2)*.075)*scale,y:oy+(y*.78-z*.9)*scale}}function s2p(x,y){const wy=(y-oy)/(scale*.78);return{x:(x-ox)/scale-(wy-H/2)*.075,y:wy}}function cleanSelected(){for(const u of selected)if(u.dead||u.team!==0)selected.delete(u);if(selectedPlanet&&selectedPlanet.team!==0)selectedPlanet=null}
 function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles=[];lasers=[];edges=[];selected.clear();selectedPlanet=null;wallPlacement=false;finished=false;elapsed=0;aiTimer=0;spawnTimer=0;nextId=1;paused=false;
-activeBattleDesign=null;bonusKey='';cachedBonuses=null;
+activeBattleDesign=null;bonusKey='';cachedBonuses=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
 activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;zoomFactor=1;cameraX=W/2;cameraY=H/2;resize();
@@ -941,6 +941,147 @@ function processUpgradeArrivals(){for(const p of planets){if(p.team!==0||p.level
 // Utility-based AI: estimates local defense, opportunities, and threat rather than always attacking nearest.
 function aiPower(u){return (u.hp/u.maxHp)*(u.type==='rectangle'?2.7:u.type==='square'?1.9:u.type==='triangle'?1.35:1)}
 function aiSend(group,target,count){group.sort((a,b)=>dist(a,target)-dist(b,target));let sent=0;for(const u of group){if(sent>=count)break;const a=sent*2.399963,r=Math.sqrt(sent)*5.8;u.moveTo={x:clamp(target.x+Math.cos(a)*r,8,W-8),y:clamp(target.y+Math.sin(a)*r,8,H-8)};u.aiOrder=elapsed;u.upgradeTarget=null;sent++}return sent}
+
+// Persistent tactical commands for planetary missions. Squads retain membership,
+// role and an objective between AI ticks; newly produced units join nearby squads.
+let planetAiSquads=new Map(),planetAiNextSquad=1,planetAiDecision=0;
+function planetSquadThink(owned,foe,neutral,mine,theirs,doctrine){
+ const power=list=>list.reduce((sum,u)=>sum+aiPower(u),0);
+ const mineById=new Map(mine.map(u=>[u.id,u]));
+ const planetById=new Map(planets.map(p=>[p.id,p]));
+ const roles=['assault','guard','flank','reserve'];
+ // Retire destroyed squads, release understrength groups for reinforcement.
+ for(const [id,squad] of planetAiSquads){
+  squad.members=squad.members.filter(uid=>mineById.has(uid));
+  if(!squad.members.length)planetAiSquads.delete(id);
+ }
+ const squadOf=new Map();
+ for(const squad of planetAiSquads.values())
+  for(const uid of squad.members)squadOf.set(uid,squad);
+ const unassigned=mine.filter(u=>!squadOf.has(u.id));
+ // Guard units use squares preferentially; fast units join flanking groups.
+ for(const u of unassigned){
+  let candidates=[...planetAiSquads.values()].filter(q=>
+   q.members.length<q.capacity&&q.members.length&&
+   Math.hypot(u.x-q.x,u.y-q.y)<(q.role==='flank'?320:270));
+  candidates.sort((a,b)=>{
+   const fit=q=>Math.hypot(u.x-q.x,u.y-q.y)-
+    (u.type==='cavalry'&&q.role==='flank'?100:0)-
+    (u.type==='square'&&q.role==='guard'?70:0)-
+    (u.type==='triangle'&&q.role==='assault'?40:0);
+   return fit(a)-fit(b);
+  });
+  let squad=candidates[0];
+  if(!squad){
+   const index=planetAiNextSquad++;
+   const role=roles[(index-1)%roles.length];
+   squad={id:index,role,members:[],capacity:role==='guard'?15:role==='reserve'?18:22,
+    x:u.x,y:u.y,objective:null,lastOrder:-100,lastPlan:-100};
+   planetAiSquads.set(index,squad);
+  }
+  squad.members.push(u.id);squadOf.set(u.id,squad);u.aiSquad=squad.id;
+ }
+ // Keep squad centers current and supply squads with partial reinforcements.
+ const squads=[...planetAiSquads.values()].filter(q=>q.members.length);
+ for(const q of squads){
+  const members=q.members.map(id=>mineById.get(id)).filter(Boolean);
+  q.x=members.reduce((total,u)=>total+u.x,0)/members.length;
+  q.y=members.reduce((total,u)=>total+u.y,0)/members.length;
+  q.power=power(members);
+  q.members=members.map(u=>u.id);
+ }
+ const fronts=[...foe,...neutral];
+ const assignedTargets=new Map();
+ const closest=(arr,p)=>arr.reduce((best,v)=>{
+  const d=Math.hypot(v.x-p.x,v.y-p.y);
+  return d<best.distance?{value:v,distance:d}:best;
+ },{value:null,distance:Infinity}).value;
+ const danger=p=>power(theirs.filter(u=>dist(u,p)<270));
+ const defense=p=>power(mine.filter(u=>dist(u,p)<185));
+ const threatened=owned.map(p=>({p,score:danger(p)-defense(p)*.8}))
+  .sort((a,b)=>b.score-a.score);
+ const priorityDefense=threatened[0]?.score>6?threatened[0].p:null;
+ const stage=Math.min(1,currentLevel/70);
+ // Decide independently for each squad, but distribute objectives across them.
+ for(const q of squads){
+  const members=q.members.map(id=>mineById.get(id)).filter(Boolean);
+  if(!members.length)continue;
+  const idle=elapsed-q.lastOrder>8;
+  const objective=planetById.get(q.objective);
+  const objectiveInvalid=!objective||(q.role==='assault'||q.role==='flank')&&objective.team===1;
+  const localThreat=power(theirs.filter(u=>Math.hypot(u.x-q.x,u.y-q.y)<165));
+  const underThreat=localThreat>q.power*1.45;
+  const shouldReplan=objectiveInvalid||elapsed-q.lastPlan>(13+(q.id%4)*2)||
+   (priorityDefense&&q.role==='reserve'&&q.objective!==priorityDefense.id);
+  if(!idle&&!underThreat&&!shouldReplan)continue;
+  let destination=null,selected=null;
+  if(q.role==='guard'||(q.role==='reserve'&&priorityDefense)){
+   const base=q.role==='reserve'&&priorityDefense?priorityDefense:
+    owned.slice().sort((a,b)=>(danger(b)-defense(b)*.65)-(danger(a)-defense(a)*.65))[0];
+   if(base){
+    selected=base;
+    const nearbyAttackers=theirs.filter(u=>dist(u,base)<240);
+    const hostile=closest(nearbyAttackers,base);
+    destination=hostile&&dist(hostile,base)<225?
+     {x:clamp(hostile.x,35,W-35),y:clamp(hostile.y,35,H-35)}:
+     {x:base.x+(q.id%3-1)*48,y:base.y+65};
+   }
+  }else if(q.role==='reserve'){
+   const base=closest(owned,q);
+   if(base){
+    selected=base;
+    const attackers=theirs.filter(u=>dist(u,base)<260);
+    const hostile=closest(attackers,base);
+    destination=hostile?{x:hostile.x,y:hostile.y}:
+      {x:base.x+(q.id%3-1)*45,y:base.y+75};
+   }
+  }else if(fronts.length){
+   const ranked=fronts.map(p=>{
+    const d=dist(p,q);
+    const defenders=power(theirs.filter(u=>dist(u,p)<155));
+    const support=power(mine.filter(u=>dist(u,p)<170&&u.aiSquad!==q.id));
+    const advantage=(q.power+support*.35)/(defenders+(p.team===0?11:7));
+    const contested=assignedTargets.get(p.id)||0;
+    const economy=p.team===2?42:56+p.level*7;
+    const exposed=p.team===0&&defenders<8?20:0;
+    const flanking=q.role==='flank'&&Math.abs(q.y-p.y)>165?18:0;
+    const style=doctrine==='expander'&&p.team===2?14:doctrine==='raider'&&p.team===0?14:0;
+    // Penalize overcommitment; coordinate multiple directions.
+    const score=economy+exposed+flanking+style-d*.092-
+     Math.max(0,1.1-advantage)*39-contested*25+
+     Math.min(25,advantage*10)+(Math.random()-.5)*stage*15;
+    return {p,score};
+   }).sort((a,b)=>b.score-a.score);
+   const viable=ranked[0];
+   if(viable&&viable.score>0){
+    selected=viable.p;
+    destination={x:selected.x,y:selected.y};
+    if(q.role==='flank'){
+     const dy=q.y<selected.y?-85:85;
+     destination={x:clamp(selected.x+(selected.x>W/2?65:-65),35,W-35),
+      y:clamp(selected.y+dy,35,H-35)};
+    }
+    assignedTargets.set(selected.id,(assignedTargets.get(selected.id)||0)+1);
+   }
+  }
+  // A damaged assault group can fall back toward friendly reinforcements.
+  if(underThreat&&q.role!=='guard'&&q.role!=='reserve'&&currentLevel>=18){
+   const fallback=closest(owned,q);
+   if(fallback){destination={x:fallback.x,y:fallback.y};selected=fallback}
+  }
+  if(destination){
+   // Reissue only after an actual tactical change or when most units stopped.
+   const changed=q.objective!==selected?.id;
+   if(idle||changed||underThreat){
+    aiSend(members,destination,members.length);
+    q.lastOrder=elapsed;
+   }
+   q.objective=selected?.id??null;
+   q.lastPlan=elapsed;
+  }
+ }
+}
+
 function aiThink(){
  if(activeBattleDesign?.fleetBattle){fleetAiThink();return}
  const doctrine=levelBonuses().design.aiStyle,owned=planets.filter(p=>p.team===1),foe=planets.filter(p=>p.team===0),neutral=planets.filter(p=>p.team===2),mine=units.filter(u=>u.team===1&&!u.dead),theirs=units.filter(u=>u.team===0&&!u.dead);
@@ -981,66 +1122,8 @@ function aiThink(){
    p.level=2;p.maxHp+=85;p.hp+=85;burst(p.x,p.y,1,10,.6);
   }
  }
- // Units can be allocated only once in a planning cycle.
- const usableIds=new Set(mine.filter(u=>!u.aiOrder||elapsed-u.aiOrder>Math.max(3.5,7-currentLevel/70)).map(u=>u.id));
- const available=arr=>arr.filter(u=>usableIds.has(u.id));
- const dispatch=(arr,destination,count)=>{
-  const chosen=available(arr).sort((a,b)=>dist(a,destination)-dist(b,destination)).slice(0,count);
-  if(!chosen.length)return 0;
-  const sent=aiSend(chosen,destination,chosen.length);
-  chosen.forEach(u=>usableIds.delete(u.id));
-  return sent;
- };
- // Save struggling worlds by pulling reserves from other fronts.
- const emergencies=owned.map(p=>({
-  p,attack:power(radiusCount(theirs,p,285)),guard:power(radiusCount(mine,p,180))
- })).sort((a,b)=>(b.attack-b.guard)-(a.attack-a.guard));
- for(const e of emergencies){
-  if(e.attack<8||e.attack<e.guard*.85)continue;
-  const reserves=available(mine.filter(u=>dist(u,e.p)>160&&dist(u,e.p)<680));
-  const needed=Math.min(reserves.length,Math.ceil(Math.max(7,e.attack-e.guard+5)));
-  if(needed>=5)dispatch(reserves,e.p,needed);
- }
- // Independently evaluate each staging planet, so attacks can split across fronts.
- const objectives=[...neutral,...foe].map(p=>({
-  p,defense:power(radiusCount(theirs,p,175)),
-  value:p.team===0?57+p.level*13:44
- }));
- for(const origin of owned){
-  const local=available(mine.filter(u=>dist(u,origin)<350));
-  if(local.length<11)continue;
-  const powerHere=power(local);
-  const threatHere=power(radiusCount(theirs,origin,230));
-  const reserve=Math.max(5,Math.min(local.length*.55,threatHere*1.1+8));
-  const attackBudget=powerHere-reserve;
-  if(attackBudget<8)continue;
-  const options=objectives.map(obj=>{
-   const d=dist(origin,obj.p);
-   const support=power(radiusCount(mine,obj.p,190))*.4;
-   const defense=obj.defense+(obj.p.team===0?13:7);
-   const margin=attackBudget+support-defense;
-   const flank=Math.abs(obj.p.y-origin.y)>180?8:0;
-   const objectiveBias=(doctrine==='raider'&&obj.p.team===0?16:0)+
-     (doctrine==='expander'&&obj.p.team===2?15:0);
-   const undefended=obj.p.team===0&&obj.defense<8?24:0;
-   const score=obj.value+objectiveBias+flank+undefended-d*.09+
-     Math.min(26,margin*.7)-(margin<0?Math.min(75,-margin*2):0)+
-     (Math.random()-.5)*(currentLevel>=25?20:5);
-   return {obj,score,margin};
-  }).filter(x=>x.margin>-(difficulty==='hard'?7:2)).sort((a,b)=>b.score-a.score);
-  if(!options.length)continue;
-  // Alternate credible objectives to make the AI less deterministic.
-  const chosen=options.length>1&&currentLevel>=25&&Math.random()<.16&&options[1].margin>0?
-    options[1]:options[0];
-  if(chosen.score<5)continue;
-  const target=chosen.obj.p;
-  const num=Math.min(local.length-Math.ceil(reserve),
-    Math.ceil(15+chosen.obj.defense*1.3+8*target.hp/target.maxHp));
-  if(num<7)continue;
-  origin.rally={x:target.x,y:target.y};
-  dispatch(local,target,num);
- }
-// AI uses only the defined planets in each level; construction is disabled.
+ planetSquadThink(owned,foe,neutral,mine,theirs,doctrine);
+ // AI uses only the defined planets in each level; construction is disabled.
 
 }
 
