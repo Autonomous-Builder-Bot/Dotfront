@@ -1142,6 +1142,31 @@ function planetSquadThink(owned,foe,neutral,mine,theirs,doctrine){
   }
  }
 }
+
+let nextAiAbility=10;
+function enemyUseAbilities(owned,foe,theirs){
+ if(currentLevel<30||difficulty==='easy'||elapsed<nextAiAbility)return;
+ const threats=owned.map(p=>({p,threat:theirs.filter(u=>dist(u,p)<240).length}))
+  .sort((a,b)=>b.threat-a.threat);
+ const threatened=threats.find(q=>q.threat>=10&&q.p.fortifyCooldown<=0&&q.p.fortify<=0);
+ if(threatened){
+  threatened.p.fortify=15;threatened.p.fortifyCooldown=55;
+  burst(threatened.p.x,threatened.p.y,1,14,.9);
+  nextAiAbility=elapsed+19;return;
+ }
+ const candidates=owned.filter(p=>p.overclockCooldown<=0&&p.overclock<=0);
+ if(candidates.length){
+  candidates.sort((a,b)=>{
+   const score=p=>2*p.level-theirs.filter(u=>dist(u,p)<230).length/12+
+    foe.reduce((best,e)=>Math.min(best,dist(e,p)),W)/W;
+   return score(b)-score(a);
+  });
+  const p=candidates[0];p.overclock=12;p.overclockCooldown=50;
+  burst(p.x,p.y,1,12,.8);
+  nextAiAbility=elapsed+Math.max(23,34-currentLevel*.045);
+ }else nextAiAbility=elapsed+10;
+}
+
 function aiThink(){
  if(activeBattleDesign?.fleetBattle){fleetAiThink();return}
  const doctrine=levelBonuses().design.aiStyle,owned=planets.filter(p=>p.team===1),foe=planets.filter(p=>p.team===0),neutral=planets.filter(p=>p.team===2),mine=units.filter(u=>u.team===1&&!u.dead),theirs=units.filter(u=>u.team===0&&!u.dead);
