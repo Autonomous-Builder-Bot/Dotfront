@@ -2,7 +2,7 @@
    player progress and upgrades live in localStorage and are never cleared. */
 (() => {
   'use strict';
-  const BUILD = 31;
+  const BUILD = 34;
   const scope = './';
   const guarded = new WeakSet();
   let checking = false;
@@ -47,7 +47,7 @@
   }
 
   document.addEventListener('click', async event => {
-    const button = event.target.closest?.('#start, #nextLevel');
+    const button = event.target.closest?.('#start, #nextLevel, #playLevel, #restartLevel');
     if (!button || guarded.has(button)) {
       if (button) guarded.delete(button);
       return;
