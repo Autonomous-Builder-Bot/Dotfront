@@ -554,6 +554,16 @@ levelDesign=function(n){
 };
 
 
+/* Authoritative 250-level campaign blueprints: unique mission geometry and ownership.
+   The previous generator remains a fallback if a script fails to load. */
+const legacyLevelDesign=levelDesign;
+levelDesign=function(n){
+ const entry=window.DotfrontCampaign?.[n-1];
+ if(!entry)return legacyLevelDesign(n);
+ return {...entry,arc:Math.floor((n-1)/20),stage:(n-1)%20,
+   template:entry.geometry,setups:entry.setups.map(p=>p.slice())};
+};
+
 /* Battlefield variation: each new attempt generates a fresh, spaced arrangement.
    Historical motifs remain recognizable; HQs and important fronts vary too. */
 function varyPlanetMap(design){
@@ -591,6 +601,7 @@ function varyPlanetMap(design){
 /* Every fifth campaign level is a historical-inspired open-field engagement:
    no planets, no production, no territory capture; command surviving troops. */
 function fleetBattleDesign(n,base){
+ if(base.fleetBattle)return {...base,setups:[],fleetBattle:true};
  const historical=window.DotfrontHistoryData?.[n-1];
  const names=['Wedge Assault','Double Envelopment','Broken Center','Echelon Advance',
               'Opposing Wings','Shield Line','Reserve Attack','Crossing Columns'];
@@ -605,32 +616,45 @@ function fleetBattleDesign(n,base){
   aiStyle:historical?.ai||'raider',worldWidth:Math.round(BASE_W*(1+.34*t)),worldHeight:Math.round(BASE_H*(1+.24*t))};
 }
 function spawnFleetFormation(design,team,count){
- // Cohesive, physically separated battalions with one troop type per squad.
- const groups=[['circle',.42],['square',.23],['triangle',.20],
-   [currentLevel>=20?'cavalry':'circle',.10],
-   [currentLevel>=30?'rectangle':'square',.05]];
- const direction=team===0?1:-1,baseX=W*(team===0?.20:.80);
+ // Group troops into recognizable single-type battalions.
+ const phase=design.fleetVariant||0;
+ const formed=[
+  {type:'circle',share:.38+(phase%3)*.035},
+  {type:'square',share:.21},
+  {type:'triangle',share:.18+(phase%4)*.01},
+  {type:currentLevel>=20?'cavalry':'circle',share:.12},
+  {type:currentLevel>=30?'rectangle':'square',share:0}
+ ];
+ const front=team===0?1:-1,baseX=W/2-front*Math.min(W*.28,700);
+ const plan=design.fleetFormation;
  let remaining=count;
- groups.forEach(([type,share],squad)=>{
-  const n=squad===groups.length-1?remaining:Math.min(remaining,Math.round(count*share));
-  remaining-=n;if(!n)return;
-  const band=H*(.16+squad*.17);
-  const form=design.fleetFormation;
-  const bend=(form==='pincer'||form==='wings')?(squad===0||squad===3?90:-30):
-    form==='echelon'?(squad-2)*35:(form==='wedge'||form==='crescent')?-Math.abs(squad-2)*35:
-    form==='reserve'&&squad===4?-120:0;
-  const x0=baseX+direction*bend;
-  const columns=Math.min(8,Math.max(3,Math.ceil(Math.sqrt(n*1.6))));
-  const rows=Math.ceil(n/columns);
-  const anchor={team,x:x0,y:band,r:0,rally:null};
+ for(let group=0;group<formed.length;group++){
+  const f=formed[group],n=group===formed.length-1?remaining:
+   Math.min(remaining,Math.round(count*f.share));
+  remaining-=n;
+  if(!n)continue;
+  const flank=group-2;
+  let bend=0;
+  if(plan==='wings'||plan==='pincer')bend=(Math.abs(flank)-1)*90;
+  else if(plan==='crescent'||plan==='wedge')bend=-Math.abs(flank)*50;
+  else if(plan==='echelon'||plan==='stagger')bend=flank*64;
+  else if(plan==='reserve')bend=group===4?-165:0;
+  else if(plan==='columns')bend=group%2?-50:60;
+  else if(plan==='hammer')bend=group===3?160:group===4?-155:0;
+  else if(plan==='sweep')bend=flank*45;
+  else if(plan==='doubleline')bend=group%2?110:-100;
+  const x0=baseX+front*bend,bandY=H/2+flank*Math.min(H*.14,140);
+  const cols=Math.min(9,Math.max(3,Math.ceil(Math.sqrt(n*1.6))));
+  const rows=Math.ceil(n/cols);
+  const anchor={team,x:x0,y:bandY,r:0,rally:null};
   for(let i=0;i<n;i++){
-   const u=spawnUnit(anchor,type,true);if(!u)continue;
-   const column=i%columns,row=Math.floor(i/columns);
-   u.x=clamp(x0+direction*(row-(rows-1)/2)*27+(Math.random()-.5)*6,35,W-35);
-   u.y=clamp(band+(column-(columns-1)/2)*23+(Math.random()-.5)*6,30,H-30);
-   u.squad=squad;u.angle=team===0?0:Math.PI;
+   const u=spawnUnit(anchor,f.type,true);if(!u)continue;
+   const col=i%cols,row=Math.floor(i/cols);
+   u.x=clamp(x0+front*(row-(rows-1)/2)*27+(Math.random()-.5)*5,40,W-40);
+   u.y=clamp(bandY+(col-(cols-1)/2)*23+(Math.random()-.5)*5,35,H-35);
+   u.squad=group;u.angle=team===0?0:Math.PI;
   }
- });
+ }
 }
 function numericFleetUnitType(i,team,design){
  const code=(i*7+Math.floor(i/5)+team*3)%20;
@@ -791,7 +815,7 @@ function refreshCamera(){
  oy=height/2-cameraY*.78*scale+15;
  if(tutorialActive&&width>height&&height<500)ox-=width*.14;
  const zin=$('zoomIn'),zout=$('zoomOut');
- if(zin)zin.disabled=zoomFactor>=2.79;
+ if(zin)zin.disabled=zoomFactor>=Math.min(8,Math.max(2.8,1+Math.max(0,W/BASE_W-1)*(width<700?2.4:1.9)))-.01;
  if(zout)zout.disabled=zoomFactor<=1.001;
 }
 function zoomBy(factor){
@@ -799,7 +823,14 @@ function zoomBy(factor){
   const focus=selectedPlanet||([...selected].length?{x:[...selected].reduce((a,u)=>a+u.x,0)/selected.size,y:[...selected].reduce((a,u)=>a+u.y,0)/selected.size}:(planets.find(p=>p.team===0)||null));
   if(focus){cameraX=focus.x;cameraY=focus.y}
  }
- zoomFactor=clamp(Math.round(zoomFactor*factor*1000)/1000,1,2.8);
+ const maxZoom=Math.min(8,Math.max(2.8,1+Math.max(0,W/BASE_W-1)*(width<700?2.4:1.9)));
+ zoomFactor=clamp(Math.round(zoomFactor*factor*1000)/1000,1,maxZoom);
+ refreshCamera();
+}
+function panCamera(screenDx,screenDy){
+ if(zoomFactor<=1.001)return;
+ cameraX=clamp(cameraX-screenDx/scale+screenDy/(scale*.78)*.075,0,W);
+ cameraY=clamp(cameraY-screenDy/(scale*.78),0,H);
  refreshCamera();
 }
 function resize(){
@@ -844,7 +875,12 @@ function init(){$('pause').textContent='Ⅱ Pause';planets=[];units=[];particles
 activeBattleDesign=null;bonusKey='';cachedBonuses=null;planetAiSquads.clear();planetAiNextSquad=1;planetAiDecision=0;
 const base=levelDesign(currentLevel);
 const design=currentLevel%5===0?fleetBattleDesign(currentLevel,base):varyPlanetMap(base),setups=design.setups;
-activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;zoomFactor=1;cameraX=W/2;cameraY=H/2;resize();
+activeBattleDesign=design;W=design.worldWidth||BASE_W;H=design.worldHeight||BASE_H;// Keep the opening battlefield legible on large maps rather than shrinking
+// all late-game planets to tiny dots. Fit Map is always available.
+zoomFactor=Math.min(7,1+Math.max(0,W/BASE_W-1)*(innerWidth<700?1.65:1.35));
+cameraX=design.fleetBattle?W/2:(setups[0]?.[0]||W/2);
+cameraY=design.fleetBattle?H/2:(setups[0]?.[1]||H/2);
+resize();
 if(design.fleetBattle){
  spawnFleetFormation(design,0,design.starter+(hasMod('doc_swarm_wave')?8:0));
  spawnFleetFormation(design,1,design.enemyStarter);
@@ -1199,18 +1235,105 @@ function placeShieldWall(start,end){
 
 function selectBox(a,b,add=false){wallPlacement=false;if(!add){selected.clear();selectedPlanet=null}const x1=Math.min(a.x,b.x),x2=Math.max(a.x,b.x),y1=Math.min(a.y,b.y),y2=Math.max(a.y,b.y);for(const u of units)if(u.team===0){let s=p2s(u.x,u.y,10);if(s.x>=x1&&s.x<=x2&&s.y>=y1&&s.y<=y2)selected.add(u)}updateHud();tutorialAction('select',{count:selected.size,gesture:'box'})}
 function clickMap(s,shift=false,double=false){const w=s2p(s.x,s.y),planet=pointPlanet(w);if(selectedPlanet){if(planet===selectedPlanet){tutorialAction('planet');return}if(planet&&planet.team===0){selectedPlanet=planet;toast('Selected '+planet.name+' — choose production or set rally.');updateHud();tutorialAction('planet');return}selectedPlanet.rally={x:clamp(w.x,0,W),y:clamp(w.y,0,H)};burst(w.x,w.y,0,5,.4);toast(`${selectedPlanet.name} rally point set.`);updateHud();tutorialAction('rally');return}if(selected.size){wallPlacement=false;if(shift&&planet&&planet.team===0){selectedPlanet=planet;selected.clear();updateHud();return}const enemy=tutorialActive?pointEnemyUnit(s):null;const destination=enemy?{x:enemy.x,y:enemy.y}:w;let n=order(selected,destination,planet&&planet.team===0?planet:null);if(n&&(!tutorialActive||tutorialSteps[tutorialIndex].event==='move'))tutorialAction(planet&&planet.team!==0?'attack':'move');if(!n)toast('Select your units first.');else if(planet&&planet.team===0&&n>=20&&planet.level<3)toast('20 arriving dots will upgrade '+planet.name+'.');selected.clear();updateHud();return}if(planet&&planet.team===0){selectedPlanet=planet;selected.clear();toast('Select shape to change production, or click map to set rally.');updateHud();tutorialAction('planet');return}const u=pointUnit(s);if(u){if(!shift)selected.clear();selected.add(u);updateHud();tutorialAction('tap',{type:u.type});return}if(!shift){selected.clear();selectedPlanet=null;updateHud()}}
-function local(e){let r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}c.addEventListener('pointerdown',e=>{if(finished||!$('overlay').classList.contains('hidden'))return;if(e.button!==0&&e.button!==2)return;e.preventDefault();c.setPointerCapture(e.pointerId);let s=local(e);drag={start:s,end:s,active:false,id:e.pointerId,shift:e.shiftKey,button:e.button,wall:wallPlacement&&e.button===0};mouse=s2p(s.x,s.y)});c.addEventListener('pointermove',e=>{let s=local(e);mouse=s2p(s.x,s.y);if(drag&&e.pointerId===drag.id){drag.end=s;if(Math.hypot(s.x-drag.start.x,s.y-drag.start.y)>7)drag.active=true}});c.addEventListener('pointerup',e=>{if(!drag||e.pointerId!==drag.id)return;let s=local(e),d=drag;drag=null;if(d.wall){placeShieldWall(d.start,s);return}if(d.active){if(d.button===0)selectBox(d.start,s,d.shift);return}let now=performance.now(),dbl=(now-lastClick.t<360&&Math.hypot(s.x-lastClick.x,s.y-lastClick.y)<24);lastClick={t:now,x:s.x,y:s.y};if(d.button===2){if(selected.size){let pos=s2p(s.x,s.y),planet=pointPlanet(pos);order(selected,pos,planet&&planet.team===0?planet:null);selected.clear();updateHud();if(pos&&planet&&planet.team!==0)tutorialAction('attack');else tutorialAction('move')}else if(selectedPlanet){selectedPlanet.rally=s2p(s.x,s.y);toast('Rally point set.');tutorialAction('rally')}}else clickMap(s,d.shift,dbl)});c.addEventListener('contextmenu',e=>e.preventDefault());
+function local(e){let r=c.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}}
+const activeTouchPoints=new Map();
+let touchNavigation=null;
+function touchPointPair(){
+ const pts=[...activeTouchPoints.values()].slice(0,2);
+ if(pts.length<2)return null;
+ return {x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2,
+  gap:Math.max(10,Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y))};
+}
+c.addEventListener('pointerdown',e=>{
+ if(finished||!$('overlay').classList.contains('hidden'))return;
+ if(e.button!==0&&e.button!==2)return;
+ e.preventDefault();c.setPointerCapture(e.pointerId);
+ const pos=local(e);
+ if(e.pointerType==='touch'){
+  activeTouchPoints.set(e.pointerId,pos);
+  if(activeTouchPoints.size>=2){
+   touchNavigation=touchPointPair();drag=null;return;
+  }
+ }
+ drag={start:pos,end:pos,active:false,id:e.pointerId,
+  shift:e.shiftKey,button:e.button,wall:wallPlacement&&e.button===0};
+ mouse=s2p(pos.x,pos.y);
+});
+c.addEventListener('pointermove',e=>{
+ const pos=local(e);
+ if(e.pointerType==='touch'&&activeTouchPoints.has(e.pointerId)){
+  activeTouchPoints.set(e.pointerId,pos);
+  if(touchNavigation&&activeTouchPoints.size>=2){
+   const next=touchPointPair();
+   panCamera(next.x-touchNavigation.x,next.y-touchNavigation.y);
+   zoomBy(next.gap/touchNavigation.gap);
+   touchNavigation=next;return;
+  }
+ }
+ mouse=s2p(pos.x,pos.y);
+ if(drag&&e.pointerId===drag.id){
+  if(drag.button===2){
+   if(Math.hypot(pos.x-drag.start.x,pos.y-drag.start.y)>7)drag.active=true;
+   if(drag.active)panCamera(pos.x-drag.end.x,pos.y-drag.end.y);
+  }else if(Math.hypot(pos.x-drag.start.x,pos.y-drag.start.y)>7)drag.active=true;
+  drag.end=pos;
+ }
+});
+c.addEventListener('pointerup',e=>{
+ const wasTouchNav=!!touchNavigation;
+ if(e.pointerType==='touch'){
+  activeTouchPoints.delete(e.pointerId);
+  if(!activeTouchPoints.size)touchNavigation=null;
+ }
+ if(wasTouchNav){drag=null;return}
+ if(!drag||e.pointerId!==drag.id)return;
+ const pos=local(e),d=drag;drag=null;
+ if(d.wall){placeShieldWall(d.start,pos);return}
+ if(d.active){if(d.button===0)selectBox(d.start,pos,d.shift);return}
+ const now=performance.now(),dbl=now-lastClick.t<360&&Math.hypot(pos.x-lastClick.x,pos.y-lastClick.y)<24;
+ lastClick={t:now,x:pos.x,y:pos.y};
+ if(d.button===2){
+  if(selected.size){
+   const destination=s2p(pos.x,pos.y),planet=pointPlanet(destination);
+   order(selected,destination,planet&&planet.team===0?planet:null);
+   selected.clear();updateHud();
+   tutorialAction(planet&&planet.team!==0?'attack':'move');
+  }else if(selectedPlanet){
+   selectedPlanet.rally=s2p(pos.x,pos.y);
+   toast('Rally point set.');tutorialAction('rally');
+  }
+ }else clickMap(pos,d.shift,dbl);
+});
+c.addEventListener('pointercancel',e=>{
+ activeTouchPoints.delete(e.pointerId);
+ if(!activeTouchPoints.size)touchNavigation=null;
+ if(drag?.id===e.pointerId)drag=null;
+});
+c.addEventListener('contextmenu',e=>e.preventDefault());
 $('start').onclick=()=>{difficulty=$('difficulty').value;startLevel()};
 $('restart').onclick=()=>startLevel();
 $('speed').onclick=()=>{setGameSpeed(speedIndex+1);toast('Battle speed: '+GAME_SPEEDS[speedIndex]+'× (both sides).')};
 $('zoomIn').onclick=()=>zoomBy(1.25);
 $('zoomOut').onclick=()=>zoomBy(1/1.25);
+const fitMap=$('fitMap');if(fitMap)fitMap.onclick=()=>{
+ zoomFactor=1;cameraX=W/2;cameraY=H/2;refreshCamera();
+};
 c.addEventListener('wheel',e=>{if(!$('overlay').classList.contains('hidden'))return;e.preventDefault();zoomBy(e.deltaY<0?1.25:1/1.25)},{passive:false});
 setGameSpeed(speedIndex);
 $('menu').onclick=()=>{menuFromPause=true;showMenu('play')};
 $('pause').onclick=()=>{if(finished)return;paused=!paused;$('pause').textContent=paused?'▶ Resume':'Ⅱ Pause';toast(paused?'Paused — selection, production and orders still work':'Battle resumed')};$('modeMove').onclick=()=>{wallPlacement=false;selectedPlanet=null;updateHud()};$('shieldWall').onclick=()=>{if(!hasMod('expansion2'))return;const squares=[...selected].filter(u=>!u.dead&&u.team===0&&u.type==='square');if(squares.length<3)return;wallPlacement=!wallPlacement;toast(wallPlacement?'Drag a line to position the shield wall.':'Shield wall placement canceled.');updateHud()};$('selectAll').onclick=()=>{selectedPlanet=null;selected=new Set(units.filter(u=>u.team===0));wallPlacement=false;updateHud();tutorialAction('select',{count:selected.size,gesture:'button'})};for(const b of document.querySelectorAll('[data-type]'))b.onclick=()=>{if(selectedPlanet){if(b.dataset.type==='cavalry'&&!cavalryUnlocked())return;selectedPlanet.type=b.dataset.type;selectedPlanet.spawn=0;toast(selectedPlanet.name+' now produces '+b.dataset.type+' units.');updateHud();tutorialAction('production')}};$('overclock').onclick=()=>{const p=selectedPlanet;if(!p||!hasMod('overclock')||p.overclock>0||p.overclockCooldown>0)return;p.overclock=12;p.overclockCooldown=50;burst(p.x,p.y,0,35,1.5);toast(p.name+' overclocked for 12 seconds!');updateHud()};
 $('fortress').onclick=()=>{const p=selectedPlanet;if(!p||!hasMod('fortress')||p.fortify>0||p.fortifyCooldown>0)return;p.fortify=15;p.fortifyCooldown=55;burst(p.x,p.y,0,30,1.4);toast(p.name+' fortified for 15 seconds!');updateHud()};
 $('upgrade').onclick=()=>{if(!selectedPlanet)return;const p=selectedPlanet;if(p.level>=3){toast('Maximum level reached.');return}const nearby=units.filter(u=>!u.dead&&u.team===0&&dist(u,p)<140).sort((a,b)=>dist(a,p)-dist(b));if(!performUpgrade(p,nearby))toast(`Need 20 friendly dots near this planet (${nearby.length} nearby). Move dots onto it or select Upgrade later.`)};document.addEventListener('keydown',e=>{if(e.repeat)return;let k=e.key.toLowerCase();if(k===' '){e.preventDefault();if($('overlay').classList.contains('hidden'))$('pause').click()}else if(finished||!$('overlay').classList.contains('hidden'))return;else if(k==='m'||k==='escape'){wallPlacement=false;selected.clear();selectedPlanet=null;updateHud()}else if(k==='a')$('selectAll').click();else if('12345'.includes(k)&&selectedPlanet){let type=['circle','square','triangle','rectangle','cavalry'][+k-1];if(type==='cavalry'&&!cavalryUnlocked())return;selectedPlanet.type=type;updateHud();tutorialAction('production')}else if(k==='u')$('upgrade').click()});
+// Arrow keys pan the camera; right-drag on desktop or two fingers on touch.
+document.addEventListener('keydown',e=>{
+ if(!$('overlay').classList.contains('hidden'))return;
+ const delta={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+ if(!delta)return;
+ e.preventDefault();const step=130/Math.max(1,zoomFactor/2);
+ cameraX=clamp(cameraX+delta[0]*step,0,W);
+ cameraY=clamp(cameraY+delta[1]*step,0,H);
+ refreshCamera();
+});
 function loop(t){let dt=Math.min(.04,((t-lastTime)||16)/1000);lastTime=t;
  if(!paused){
   const gameDt=dt*GAME_SPEEDS[speedIndex];
