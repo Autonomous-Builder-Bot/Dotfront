@@ -29,7 +29,7 @@
  let audioReady=false;
  const STRIDE=60/84/2; // eighth-note grid: spacious yet rhythmically consistent
  const attackCounts=Object.create(null),lastPlayed=new Map();
- const cooldown={select:.09,order:.12,button:.09,destroy:.35,capture:.8,
+ const cooldown={select:.09,order:.12,button:.09,destroy:.65,capture:.8,
   lost:.8,upgrade:.35,ability:.2,alert:2,victory:1,defeat:1};
  let rotated=0;
  function save(){try{localStorage.setItem(KEY,JSON.stringify(settings))}catch(_){}}
@@ -54,7 +54,7 @@
  function setBuses(){
   if(!ctx)return;
   const now=ctx.currentTime;
-  const duck=now<musicDuckedUntil?.78:1;
+  const duck=now<musicDuckedUntil?0.78:1;
   musicBus.gain.setTargetAtTime(
     settings.music&&currentBattle&&!hidden?settings.musicVolume*.80*(paused?.28:1)*duck:0,
     now,.12);
@@ -170,7 +170,7 @@
   if(!currentBattle||paused||hidden||!settings.sfx||!NOTES[type])return;
   attackCounts[type]=(attackCounts[type]||0)+1;
  }
- // Simultaneous attacks are clustered by instrument every second eighth-note.
+ // Simultaneous attacks are clustered by instrument on each eighth-note.
  // Up to three voices represent an entire engagement, avoiding sonic overload.
  function playBattleNotes(at){
   if(!settings.sfx||paused){clearAttacks();return}
@@ -231,7 +231,7 @@
   let work=0;
   while(nextStep<ctx.currentTime+.28&&work++<3){
    if(settings.music)score(step,nextStep);
-   if(step%2===0)playBattleNotes(nextStep);
+   playBattleNotes(nextStep);
    step++;nextStep+=STRIDE;
   }
   if(ctx.currentTime>musicDuckedUntil&&musicDuckedUntil){
