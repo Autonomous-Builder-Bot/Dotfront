@@ -826,7 +826,12 @@ function showMenu(tab='play'){menuTab=tab;paused=true;window.DotfrontAudio?.setP
 if(tab==='upgrades'){body=renderTechTree()}
 else if(tab==='levels'){body=`<p>Select any unlocked level. Completed levels are marked ✓.</p><div id="levelChooser">${Array.from({length:CAMPAIGN_SIZE},(_,i)=>{let n=i+1,done=progress.completed.includes(n);let name=window.DotfrontCampaign?.[i]?.title||window.DotfrontHistoryData?.[i]?.name||'Level '+n;return `<button class="button ${done?'done':''} ${n===currentLevel?'active':''}" data-level="${n}" title="${name}" aria-label="Level ${n}: ${name}" ${n>progress.unlocked?'disabled':''}>${done?'✓ ':''}${n}</button>`}).join('')}</div>`}
 else body=`<div class="campaignInfo"><b>Level ${currentLevel} / ${CAMPAIGN_SIZE} — ${d.title}</b><br>${d.hint}<br>Enemy strategy: ${d.aiStyle} · ${d.setups.length} planets · Completed: ${progress.completed.length}/${CAMPAIGN_SIZE}<br><span class="subtle">${d.historical?'Historically inspired strategy, adapted to unrestricted space.':'Deterministic strategic map.'} The enemy evolves over the campaign.</span></div><label id="difficultyLabel" for="difficulty">ENEMY DIFFICULTY</label><select id="difficulty"><option value="easy">Easy — slower AI, 18s head start</option><option value="normal">Normal — balanced, 6s head start</option><option value="hard">Hard — faster AI, no head start</option></select>`;
-$('modal').innerHTML=`<h2>DOTFRONT</h2>${nav}${body}<div class="audioPreferences" aria-label="Audio settings"><button class="button" type="button" data-audio-toggle="music" aria-pressed="true">♫ Music On</button><button class="button" type="button" data-audio-toggle="sfx" aria-pressed="true">♪ SFX On</button></div><div class="modalNav"><button class="button" id="resumeGame">${menuFromPause&&!finished?'RESUME':'CLOSE'}</button><button class="button" id="restartLevel">↺ RESTART LEVEL</button><button class="button" id="playLevel">▶ ${currentLevel===progress.unlocked&&!progress.completed.includes(currentLevel)?"CONTINUE":"PLAY"} LEVEL ${currentLevel}</button></div><div class="modalNav"><button class="button" id="tutorialReplay">? TUTORIAL</button><button class="button" id="exportSave">Export save</button><button class="button" id="importSave">Import save</button><input id="saveFile" type="file" accept="application/json,.json" style="display:none"></div>`;
+$('modal').innerHTML=`<h2>DOTFRONT</h2>${nav}${body}<div class="audioPreferences" aria-label="Audio settings">
+ <button class="button" type="button" data-audio-toggle="music" aria-pressed="true">♫ Music On</button>
+ <label class="audioVolume">Music <input type="range" min="0" max="100" step="5" value="88" data-audio-volume="music" aria-label="Music volume"><span data-audio-value="music">88%</span></label>
+ <button class="button" type="button" data-audio-toggle="sfx" aria-pressed="true">♪ SFX On</button>
+ <label class="audioVolume">Battle <input type="range" min="0" max="100" step="5" value="48" data-audio-volume="sfx" aria-label="Battle sound volume"><span data-audio-value="sfx">48%</span></label>
+ </div><div class="modalNav"><button class="button" id="resumeGame">${menuFromPause&&!finished?'RESUME':'CLOSE'}</button><button class="button" id="restartLevel">↺ RESTART LEVEL</button><button class="button" id="playLevel">▶ ${currentLevel===progress.unlocked&&!progress.completed.includes(currentLevel)?"CONTINUE":"PLAY"} LEVEL ${currentLevel}</button></div><div class="modalNav"><button class="button" id="tutorialReplay">? TUTORIAL</button><button class="button" id="exportSave">Export save</button><button class="button" id="importSave">Import save</button><input id="saveFile" type="file" accept="application/json,.json" style="display:none"></div>`;
 window.DotfrontAudio?.refresh();
 $('tutorialReplay').onclick=()=>{const resume=!finished&&planets.length>0;if(resume){$('overlay').classList.add('hidden');paused=false;window.DotfrontAudio?.setPaused(false);$('pause').textContent='Ⅱ Pause'}else startLevel();tutorialStart(true)};
 $('exportSave').onclick=exportProgress;$('importSave').onclick=()=>$('saveFile').click();$('saveFile').onchange=e=>{const file=e.target.files?.[0];if(file)importProgress(file)};
@@ -959,7 +964,7 @@ let ep=null,epd=Infinity;
 for(const p of planets)if(p.team!==u.team){const d=dist(u,p)-p.r;if(d<Math.max(68,attackRange+18)&&d<epd){epd=d;ep=p}}
 // Fire at a nearby enemy unit; triangles hold their laser firing distance.
 if(enemy&&ed<attackRange+4){
- if(u.cooldown<=0){if(Math.random()<.18)window.DotfrontAudio?.play(u.type==='triangle'?'laser':u.type==='rectangle'?'heavy':'hit');
+ if(u.cooldown<=0){window.DotfrontAudio?.unitAttack(u.type);
   const wallArmor=enemy.team===0&&enemy.type==='square'&&enemy.shieldWall&&dist(enemy,enemy.shieldWall)<27?(hasMod('expansion3')?10:6):0;
   let baseDamage=spec.damage*(u.team===0?levelBonuses().damage:enemyChallenge().damage);
   if(u.team===0){
@@ -998,7 +1003,7 @@ if(enemy&&ed<attackRange+4){
 }
 // Rectangles can kill defenders but cannot damage or capture planets.
 if(ep&&epd<attackRange&&spec.capture){
- if(u.cooldown<=0&&ep.shield<=0){if(Math.random()<.08)window.DotfrontAudio?.play(u.type==='triangle'?'laser':'hit');
+ if(u.cooldown<=0&&ep.shield<=0){window.DotfrontAudio?.unitAttack(u.type);
   const healthFactor=.3+.7*clamp(u.hp/u.maxHp,0,1);
   const captureDamage=spec.damage*.7*healthFactor*(u.team===0?levelBonuses().capture*levelBonuses().damage:enemyChallenge().capture*enemyChallenge().damage)*(u.team===0&&u.type==='triangle'&&hasMod('expansion1')?2:1);
   ep.hp-=captureDamage*(ep.fortify>0?.65:1);u.cooldown=spec.attackPeriod*(u.team===0&&u.type==='triangle'&&hasMod('doc_ranged_volley')?.8:1);ep.flash=.22;
