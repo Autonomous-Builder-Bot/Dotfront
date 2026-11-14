@@ -480,3 +480,21 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
 @media(orientation:landscape) and (max-height:500px){
  #minimap{top:47px;right:7px;width:105px;height:65px;opacity:.8}
 }
+
+/* Sound controls use the existing zoom column without covering the minimap. */
+#zoomControls .button[data-audio-toggle]{
+ width:69px;min-height:31px;height:31px;padding:3px 5px;
+ font:700 10px/1.1 system-ui,sans-serif;letter-spacing:0;
+ white-space:nowrap;border-color:#5b7e9db0;background:#142844e8;
+}
+#zoomControls .button[data-audio-toggle].muted,
+.audioPreferences .button.muted{opacity:.58;color:#a2adc0}
+.audioPreferences{
+ display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0 4px;
+}
+.audioPreferences .button{min-width:112px;font-size:12px}
+@media(orientation:landscape) and (max-height:500px){
+ #zoomControls .button[data-audio-toggle]{
+  width:66px;height:28px;min-height:28px;font-size:9px;
+ }
+}
