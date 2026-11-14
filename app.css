@@ -498,3 +498,12 @@ body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
   width:66px;height:28px;min-height:28px;font-size:9px;
  }
 }
+
+/* Musical Battlefield mixer — explicit balance between ambient score and
+   aggregated unit notes. Labels remain tappable in the campaign menu. */
+.audioPreferences{display:grid;grid-template-columns:auto minmax(120px,1fr);align-items:center;gap:9px 12px;margin:14px auto 7px;max-width:390px}
+.audioPreferences .button{margin:0!important;min-width:116px!important}
+.audioVolume{display:flex;align-items:center;gap:7px;color:#c7dff0;font-size:11px;text-align:left;white-space:nowrap}
+.audioVolume input{min-width:50px;flex:1;accent-color:#7bd9f7;touch-action:pan-x;cursor:pointer}
+.audioVolume span{width:33px;display:inline-block;text-align:right;font-variant-numeric:tabular-nums;color:#92b9d7}
+@media(max-width:420px){.audioPreferences{gap:9px 7px}.audioPreferences .button{min-width:99px!important}.audioVolume{gap:4px}}
