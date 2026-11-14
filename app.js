@@ -1579,5 +1579,5 @@ function loop(t){let dt=Math.min(.04,((t-lastTime)||16)/1000);lastTime=t;
   const visualCombat=lasers.length+Math.min(30,particles.length)*.12;
   window.DotfrontAudio.setIntensity(Math.min(1,visualCombat/9+Math.min(1,units.length/350)*.2));
  }
- if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)dismissToast()}render();requestAnimationFrame(loop)}addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{lastTime=0;if(document.hidden&&!finished&&!paused){paused=true;$('pause').textContent='▶ Resume'}});addEventListener('pagehide',()=>{lastTime=0;if(!finished&&!paused){paused=true;$('pause').textContent='▶ Resume'}});resize();requestAnimationFrame(loop);menuFromPause=false;showMenu('play');
+ if(toastTimer>0){toastTimer-=dt;if(toastTimer<=0)dismissToast()}render();requestAnimationFrame(loop)}addEventListener('resize',resize);document.addEventListener('visibilitychange',()=>{lastTime=0;if(document.hidden&&!finished&&!paused){paused=true;window.DotfrontAudio?.setPaused(true);$('pause').textContent='▶ Resume'}});addEventListener('pagehide',()=>{lastTime=0;if(!finished&&!paused){paused=true;window.DotfrontAudio?.setPaused(true);$('pause').textContent='▶ Resume'}});resize();requestAnimationFrame(loop);menuFromPause=false;showMenu('play');
 })();
